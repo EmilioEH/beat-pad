@@ -39,7 +39,7 @@ class Sequencer {
     }
   }
 
-  _stepInterval() {
+  stepInterval() {
     return (60000 / this.bpm) / 4;
   }
 
@@ -47,7 +47,6 @@ class Sequencer {
     if (this.isPlaying) return;
     this.isPlaying = true;
     this.currentStep = 0;
-    this._lastTime = performance.now();
     this._schedule();
     this.onPlay?.(true);
   }
@@ -69,6 +68,6 @@ class Sequencer {
     }
     this.onStep?.(step, active);
     this.currentStep = (this.currentStep + 1) % this.numSteps;
-    this._timer = setTimeout(() => this._schedule(), this._stepInterval());
+    this._timer = setTimeout(() => this._schedule(), this.stepInterval());
   }
 }

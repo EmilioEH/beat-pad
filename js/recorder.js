@@ -9,7 +9,9 @@ class Recorder {
   start() {
     this.active = true;
     this._hits = [];
-    this._start = performance.now();
+    const interval = this.seq.stepInterval();
+    const offset = this.seq.isPlaying ? this.seq.currentStep * interval : 0;
+    this._start = performance.now() - offset;
   }
 
   hit(pad) {
@@ -35,7 +37,7 @@ class Recorder {
   }
 
   _quantize() {
-    const interval = this.seq._stepInterval();
+    const interval = this.seq.stepInterval();
     const seen = new Set();
     const out = [];
     for (const h of this._hits) {

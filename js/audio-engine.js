@@ -45,15 +45,16 @@ class AudioEngine {
     g.gain.setValueAtTime(gainVal, t);
     g.gain.exponentialRampToValueAtTime(0.001, t + dur);
     o.connect(g);
-    return { src: o, g };
+    return { src: o, g, dur };
   }
 
-  _connect(/* {src, g} */ ...nodes) {
+  _connect(...nodes) {
     const dest = this.ctx.destination;
     for (const n of nodes) {
       n.g.connect(dest);
       n.src.start();
-      n.src.stop(this.ctx.currentTime + (n.src.buffer ? n.src.buffer.duration : 0.5));
+      const dur = n.src.buffer ? n.src.buffer.duration : (n.dur || 0.5);
+      n.src.stop(this.ctx.currentTime + dur);
     }
   }
 
