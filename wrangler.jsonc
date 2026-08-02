@@ -1,0 +1,9 @@
+{
+  // Beat Pad is a static PWA with no build step, so this is an assets-only
+  // Worker: no "main" script, just the files in this directory.
+  "name": "beat-pad",
+  "compatibility_date": "2026-08-01",
+  "assets": {
+    "directory": "./"
+  }
+}

@@ -1,0 +1,6 @@
+# Repository files that are not part of the deployed app.
+# Same syntax as .gitignore.
+.assetsignore
+.gitignore
+wrangler.jsonc
+docs/
