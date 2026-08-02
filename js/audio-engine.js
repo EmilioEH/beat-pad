@@ -1,251 +1,221 @@
+/* ═══════════════════════════════════════════════════════════════
+   KIT DEFINITIONS — data, not code.
+   Adding a kit is an edit to this table; no new synthesis code.
+   Voice types: 'osc' | 'noise' | 'noise+osc' | 'clap'
+   ═══════════════════════════════════════════════════════════════ */
+const KITS = {
+  boom: {
+    label: 'Boom',
+    voices: {
+      kick:  { type: 'osc', wave: 'sine', freq: 150, freqEnd: 40, gain: 1.0, dur: 0.35 },
+      snare: { type: 'noise+osc',
+               noise: { gain: 0.45, dur: 0.25, filter: { type: 'highpass', freq: 500 } },
+               osc:   { wave: 'sine', freq: 200, gain: 0.6, dur: 0.12 } },
+      chh:   { type: 'noise', gain: 0.30, dur: 0.06, filter: { type: 'highpass', freq: 9000 } },
+      ohh:   { type: 'noise', gain: 0.24, dur: 0.50, filter: { type: 'highpass', freq: 7000 } },
+      clap:  { type: 'clap', bursts: 3, spread: 0.015, gain: 0.35, dur: 0.08,
+               filter: { type: 'lowpass', freq: 2000 } },
+      tomL:  { type: 'osc', wave: 'sine', freq: 90, freqEnd: 55, gain: 0.7, dur: 0.28 },
+      tomH:  { type: 'osc', wave: 'sine', freq: 160, freqEnd: 100, gain: 0.65, dur: 0.25 },
+      rim:   { type: 'noise+osc',
+               noise: { gain: 0.35, dur: 0.04, filter: { type: 'bandpass', freq: 3000, Q: 5 } },
+               osc:   { wave: 'sine', freq: 350, gain: 0.4, dur: 0.06 } },
+      crash: { type: 'noise', gain: 0.30, dur: 1.6, filter: { type: 'lowpass', freq: 6000 } },
+    },
+  },
+
+  band: {
+    label: 'Band',
+    voices: {
+      kick:  { type: 'osc', wave: 'sine', freq: 100, freqEnd: 30, gain: 0.95, dur: 0.40 },
+      snare: { type: 'noise+osc',
+               noise: { gain: 0.55, dur: 0.22, filter: { type: 'highpass', freq: 300 } },
+               osc:   { wave: 'sine', freq: 180, gain: 0.45, dur: 0.10 } },
+      chh:   { type: 'noise', gain: 0.26, dur: 0.05, filter: { type: 'highpass', freq: 10000 } },
+      ohh:   { type: 'noise', gain: 0.20, dur: 0.45, filter: { type: 'highpass', freq: 8000 } },
+      clap:  { type: 'clap', bursts: 4, spread: 0.012, gain: 0.30, dur: 0.06,
+               filter: { type: 'lowpass', freq: 3000 } },
+      tomL:  { type: 'osc', wave: 'triangle', freq: 75, freqEnd: 50, gain: 0.6, dur: 0.30 },
+      tomH:  { type: 'osc', wave: 'triangle', freq: 140, freqEnd: 95, gain: 0.55, dur: 0.27 },
+      rim:   { type: 'noise+osc',
+               noise: { gain: 0.40, dur: 0.03, filter: { type: 'bandpass', freq: 4000, Q: 8 } },
+               osc:   { wave: 'sine', freq: 400, gain: 0.35, dur: 0.05 } },
+      crash: { type: 'noise', gain: 0.26, dur: 1.8, filter: { type: 'lowpass', freq: 8000 } },
+    },
+  },
+
+  toy: {
+    label: 'Toy',
+    voices: {
+      kick:  { type: 'osc', wave: 'triangle', freq: 320, freqEnd: 90, gain: 0.8, dur: 0.22 },
+      snare: { type: 'noise+osc',
+               noise: { gain: 0.30, dur: 0.14, filter: { type: 'bandpass', freq: 1800, Q: 2 } },
+               osc:   { wave: 'square', freq: 520, freqEnd: 300, gain: 0.22, dur: 0.10 } },
+      chh:   { type: 'noise', gain: 0.22, dur: 0.05, filter: { type: 'bandpass', freq: 7000, Q: 3 } },
+      ohh:   { type: 'noise', gain: 0.18, dur: 0.35, filter: { type: 'bandpass', freq: 5000, Q: 2 } },
+      clap:  { type: 'clap', bursts: 3, spread: 0.02, gain: 0.28, dur: 0.07,
+               filter: { type: 'bandpass', freq: 2500, Q: 1.5 } },
+      tomL:  { type: 'osc', wave: 'square', freq: 260, freqEnd: 150, gain: 0.30, dur: 0.20 },
+      tomH:  { type: 'osc', wave: 'square', freq: 440, freqEnd: 280, gain: 0.28, dur: 0.18 },
+      rim:   { type: 'osc', wave: 'square', freq: 900, freqEnd: 700, gain: 0.20, dur: 0.05 },
+      crash: { type: 'noise', gain: 0.24, dur: 1.2, filter: { type: 'bandpass', freq: 4500, Q: 1 } },
+    },
+  },
+};
+
 class AudioEngine {
   constructor() {
     this.ctx = null;
-    this.kit = '808';
+    this.kit = 'boom';
+    this.master = null;
+    this._noiseBuf = null;
   }
 
   init() {
+    if (this.ctx) return;
     this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+    // Master chain: everything routes through here so simultaneous pads
+    // can't sum past full scale. Small ears, cheap speakers, no clipping.
+    this.master = this.ctx.createGain();
+    this.master.gain.value = 0.7;
+
+    const limiter = this.ctx.createDynamicsCompressor();
+    limiter.threshold.value = -6;
+    limiter.knee.value = 0;
+    limiter.ratio.value = 20;
+    limiter.attack.value = 0.003;
+    limiter.release.value = 0.25;
+
+    this.master.connect(limiter).connect(this.ctx.destination);
   }
 
-  ensure() {
-    if (this.ctx.state === 'suspended') return this.ctx.resume();
-    return Promise.resolve();
+  /** Browsers start the context suspended until a user gesture. */
+  unlock() {
+    if (!this.ctx || this.ctx.state === 'running') return Promise.resolve();
+    return this.ctx.resume();
   }
 
-  play(pad) {
-    this.ensure();
-    if (this.kit === '808') this['_808_' + pad]();
-    else this['_ac_' + pad]();
+  get running() {
+    return !!this.ctx && this.ctx.state === 'running';
   }
 
-  /* ─── NOISE HELPER ─── */
-  _noise(dur, gainVal) {
-    const sr = this.ctx.sampleRate;
-    const len = sr * dur;
-    const buf = this.ctx.createBuffer(1, len, sr);
-    const d = buf.getChannelData(0);
-    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+  setVolume(v) {
+    if (this.master) this.master.gain.value = Math.max(0, Math.min(1, v));
+  }
+
+  setKit(name) {
+    if (KITS[name]) this.kit = name;
+  }
+
+  /**
+   * Fire a voice by name at an explicit audio-clock time.
+   * `when` omitted means "now" (a live pad tap).
+   */
+  play(voice, when) {
+    if (!this.ctx) return;
+    const spec = KITS[this.kit].voices[voice];
+    if (!spec) return;
+    const t = when === undefined ? this.ctx.currentTime : when;
+    for (const node of this._render(spec, t)) node.connect(this.master);
+  }
+
+  /** Reward sound: a short rising sparkle, not part of any kit. */
+  sparkle(when) {
+    if (!this.ctx) return;
+    const t = when === undefined ? this.ctx.currentTime : when;
+    const notes = [523.25, 659.25, 783.99, 1046.5];
+    notes.forEach((f, i) => {
+      const g = this._oscVoice(
+        { wave: 'triangle', freq: f, gain: 0.22, dur: 0.28 },
+        t + i * 0.07
+      );
+      g.connect(this.master);
+    });
+  }
+
+  /* ─── voice renderers ─── */
+
+  _render(spec, when) {
+    switch (spec.type) {
+      case 'osc':
+        return [this._oscVoice(spec, when)];
+      case 'noise':
+        return [this._noiseVoice(spec, when)];
+      case 'noise+osc':
+        return [this._noiseVoice(spec.noise, when), this._oscVoice(spec.osc, when)];
+      case 'clap':
+        return this._clapVoice(spec, when);
+      default:
+        return [];
+    }
+  }
+
+  _oscVoice(spec, when) {
+    const o = this.ctx.createOscillator();
+    o.type = spec.wave;
+    o.frequency.setValueAtTime(spec.freq, when);
+    if (spec.freqEnd !== undefined) {
+      o.frequency.exponentialRampToValueAtTime(spec.freqEnd, when + spec.dur);
+    }
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(spec.gain, when);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + spec.dur);
+    o.connect(g);
+    o.start(when);
+    o.stop(when + spec.dur + 0.02);
+    return g;
+  }
+
+  _noiseVoice(spec, when) {
+    const buf = this._noiseBuffer();
     const src = this.ctx.createBufferSource();
     src.buffer = buf;
+
     const g = this.ctx.createGain();
-    g.gain.setValueAtTime(gainVal, this.ctx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + dur);
-    src.connect(g);
-    return { src, g };
+    g.gain.setValueAtTime(spec.gain, when);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + spec.dur);
+
+    // One place where the filter is wired, so it can't be bypassed.
+    if (spec.filter) src.connect(this._filter(spec.filter)).connect(g);
+    else src.connect(g);
+
+    const maxOffset = Math.max(0, buf.duration - spec.dur - 0.01);
+    src.start(when, Math.random() * maxOffset, spec.dur);
+    return g;
   }
 
-  _osc(type, freq, gainVal, dur, freqEnd) {
-    const o = this.ctx.createOscillator();
-    o.type = type;
-    const t = this.ctx.currentTime;
-    o.frequency.setValueAtTime(freq, t);
-    if (freqEnd !== undefined) o.frequency.exponentialRampToValueAtTime(freqEnd, t + dur);
-    const g = this.ctx.createGain();
-    g.gain.setValueAtTime(gainVal, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-    o.connect(g);
-    return { src: o, g, dur };
-  }
-
-  _connect(...nodes) {
-    const dest = this.ctx.destination;
-    for (const n of nodes) {
-      n.g.connect(dest);
-      n.src.start();
-      const dur = n.src.buffer ? n.src.buffer.duration : (n.dur || 0.5);
-      n.src.stop(this.ctx.currentTime + dur);
+  _clapVoice(spec, when) {
+    const out = [];
+    for (let i = 0; i < spec.bursts; i++) {
+      out.push(
+        this._noiseVoice(
+          { gain: spec.gain, dur: spec.dur, filter: spec.filter },
+          when + i * spec.spread
+        )
+      );
     }
+    return out;
   }
 
-  /* ═══════════════════════ 808 KIT ═══════════════════════ */
-
-  _808_0() { // Kick
-    const { src, g } = this._osc('sine', 150, 1.2, 0.35, 40);
-    g.connect(this.ctx.destination);
-    src.start();
-    src.stop(this.ctx.currentTime + 0.35);
+  _filter(f) {
+    const node = this.ctx.createBiquadFilter();
+    node.type = f.type;
+    node.frequency.value = f.freq;
+    if (f.Q !== undefined) node.Q.value = f.Q;
+    return node;
   }
 
-  _808_1() { // Snare
-    const t = this.ctx.currentTime;
-    const n = this._noise(0.25, 0.45);
-    const o = this._osc('sine', 200, 0.7, 0.12);
-    const f = this.ctx.createBiquadFilter();
-    f.type = 'highpass';
-    f.frequency.value = 500;
-    n.src.connect(f);
-    f.connect(n.g);
-    this._connect(n, o);
-  }
-
-  _808_2() { // Closed HH
-    const n = this._noise(0.06, 0.25);
-    const f = this.ctx.createBiquadFilter();
-    f.type = 'highpass';
-    f.frequency.value = 9000;
-    n.src.connect(f).connect(n.g);
-    n.g.connect(this.ctx.destination);
-    n.src.start();
-    n.src.stop(this.ctx.currentTime + 0.06);
-  }
-
-  _808_3() { // Open HH
-    const n = this._noise(0.5, 0.2);
-    const f = this.ctx.createBiquadFilter();
-    f.type = 'highpass';
-    f.frequency.value = 7000;
-    n.src.connect(f).connect(n.g);
-    n.g.connect(this.ctx.destination);
-    n.src.start();
-    n.src.stop(this.ctx.currentTime + 0.5);
-  }
-
-  _808_4() { // Clap
-    const t = this.ctx.currentTime;
-    for (let i = 0; i < 3; i++) {
-      const n = this._noise(0.08, 0.18);
-      const f = this.ctx.createBiquadFilter();
-      f.type = 'lowpass';
-      f.frequency.value = 2000;
-      n.src.connect(f).connect(n.g);
-      const g2 = this.ctx.createGain();
-      g2.gain.setValueAtTime(0.8, t + i * 0.015);
-      g2.gain.exponentialRampToValueAtTime(0.001, t + i * 0.015 + 0.08);
-      n.g.connect(g2).connect(this.ctx.destination);
-      n.src.start(t + i * 0.015);
-      n.src.stop(t + i * 0.015 + 0.08);
+  /** One shared noise buffer, generated once, read from a random offset. */
+  _noiseBuffer() {
+    if (!this._noiseBuf) {
+      const sr = this.ctx.sampleRate;
+      const len = Math.floor(sr * 3);
+      const buf = this.ctx.createBuffer(1, len, sr);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+      this._noiseBuf = buf;
     }
-  }
-
-  _808_5() { // Tom Low
-    const { src, g } = this._osc('sine', 90, 0.7, 0.28, 55);
-    g.connect(this.ctx.destination);
-    src.start();
-    src.stop(this.ctx.currentTime + 0.28);
-  }
-
-  _808_6() { // Tom High
-    const { src, g } = this._osc('sine', 160, 0.65, 0.25, 100);
-    g.connect(this.ctx.destination);
-    src.start();
-    src.stop(this.ctx.currentTime + 0.25);
-  }
-
-  _808_7() { // Rimshot
-    const t = this.ctx.currentTime;
-    const n = this._noise(0.04, 0.25);
-    const f = this.ctx.createBiquadFilter();
-    f.type = 'bandpass';
-    f.frequency.value = 3000;
-    f.Q.value = 5;
-    n.src.connect(f).connect(n.g);
-    const o = this._osc('sine', 350, 0.4, 0.06);
-    this._connect(n, o);
-  }
-
-  _808_8() { // Crash
-    const n = this._noise(1.8, 0.3);
-    const f = this.ctx.createBiquadFilter();
-    f.type = 'lowpass';
-    f.frequency.value = 6000;
-    n.src.connect(f).connect(n.g);
-    n.g.connect(this.ctx.destination);
-    n.src.start();
-    n.src.stop(this.ctx.currentTime + 1.8);
-  }
-
-  /* ═══════════════════ ACOUSTIC KIT ═══════════════════ */
-
-  _ac_0() { // Kick
-    const { src, g } = this._osc('sine', 100, 1.0, 0.4, 30);
-    g.connect(this.ctx.destination);
-    src.start();
-    src.stop(this.ctx.currentTime + 0.4);
-  }
-
-  _ac_1() { // Snare
-    const n = this._noise(0.22, 0.55);
-    const f = this.ctx.createBiquadFilter();
-    f.type = 'highpass';
-    f.frequency.value = 300;
-    n.src.connect(f).connect(n.g);
-    const o = this._osc('sine', 180, 0.5, 0.1);
-    this._connect(n, o);
-  }
-
-  _ac_2() { // Closed HH
-    const n = this._noise(0.05, 0.2);
-    const f = this.ctx.createBiquadFilter();
-    f.type = 'highpass';
-    f.frequency.value = 10000;
-    n.src.connect(f).connect(n.g);
-    n.g.connect(this.ctx.destination);
-    n.src.start();
-    n.src.stop(this.ctx.currentTime + 0.05);
-  }
-
-  _ac_3() { // Open HH
-    const n = this._noise(0.45, 0.15);
-    const f = this.ctx.createBiquadFilter();
-    f.type = 'highpass';
-    f.frequency.value = 8000;
-    n.src.connect(f).connect(n.g);
-    n.g.connect(this.ctx.destination);
-    n.src.start();
-    n.src.stop(this.ctx.currentTime + 0.45);
-  }
-
-  _ac_4() { // Clap
-    const t = this.ctx.currentTime;
-    for (let i = 0; i < 4; i++) {
-      const n = this._noise(0.06, 0.15);
-      const f = this.ctx.createBiquadFilter();
-      f.type = 'lowpass';
-      f.frequency.value = 3000;
-      n.src.connect(f).connect(n.g);
-      const g2 = this.ctx.createGain();
-      g2.gain.setValueAtTime(0.7, t + i * 0.012);
-      g2.gain.exponentialRampToValueAtTime(0.001, t + i * 0.012 + 0.06);
-      n.g.connect(g2).connect(this.ctx.destination);
-      n.src.start(t + i * 0.012);
-      n.src.stop(t + i * 0.012 + 0.06);
-    }
-  }
-
-  _ac_5() { // Tom Low
-    const { src, g } = this._osc('triangle', 75, 0.6, 0.3, 50);
-    g.connect(this.ctx.destination);
-    src.start();
-    src.stop(this.ctx.currentTime + 0.3);
-  }
-
-  _ac_6() { // Tom High
-    const { src, g } = this._osc('triangle', 140, 0.55, 0.27, 95);
-    g.connect(this.ctx.destination);
-    src.start();
-    src.stop(this.ctx.currentTime + 0.27);
-  }
-
-  _ac_7() { // Rimshot
-    const n = this._noise(0.03, 0.3);
-    const f = this.ctx.createBiquadFilter();
-    f.type = 'bandpass';
-    f.frequency.value = 4000;
-    f.Q.value = 8;
-    n.src.connect(f).connect(n.g);
-    const o = this._osc('sine', 400, 0.35, 0.05);
-    this._connect(n, o);
-  }
-
-  _ac_8() { // Crash
-    const n = this._noise(2.0, 0.25);
-    const f = this.ctx.createBiquadFilter();
-    f.type = 'lowpass';
-    f.frequency.value = 8000;
-    n.src.connect(f).connect(n.g);
-    n.g.connect(this.ctx.destination);
-    n.src.start();
-    n.src.stop(this.ctx.currentTime + 2.0);
+    return this._noiseBuf;
   }
 }

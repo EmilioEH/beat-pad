@@ -1,12 +1,12 @@
 {
   "name": "Beat Pad",
   "short_name": "Beats",
-  "description": "Tap, sequence, and loop drum beats",
-  "start_url": "/",
-  "scope": "/",
+  "description": "A first drum machine for little hands",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#0f0f1a",
-  "theme_color": "#0f0f1a",
+  "background_color": "#FFF6E5",
+  "theme_color": "#FFF6E5",
   "orientation": "portrait",
   "icons": [
     {
