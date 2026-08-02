@@ -1,5 +1,16 @@
 # Beat Pad — Analysis for Ages 3–6
 
+> **Status: implemented.** Everything in "Suggested order of work" below has shipped; the
+> checklist at the end records what each item became. The analysis is kept in its original
+> form as the reasoning behind the rewrite. Where the text says "currently" or "right now,"
+> it is describing the app *before* those changes.
+>
+> Two of the claims below were measured rather than argued, in headless Chromium:
+> - The closed hi-hat's 12 kHz-to-300 Hz energy ratio was **2.86** before the filter fix and
+>   **1285** after — the unfiltered dry path really was drowning out the highpass.
+> - Under a deliberately blocked main thread, the rebuilt scheduler's worst bar-length
+>   deviation over 4 seconds is **0.0000 ms**.
+
 Two separate questions, answered separately:
 
 1. **Is this game right for 3–6 year olds?** Not yet. It's a well-made *adult* drum machine. The
@@ -338,13 +349,46 @@ handful of unit tests — Bug 3 would have been caught by one.
 
 ---
 
-## Suggested order of work
+## Suggested order of work — and what shipped
 
-1. Fix the noise-filter bypass (Bug 1) — one-line-per-voice change, transforms the sound.
-2. Add master gain + limiter — safety, and it's ~6 lines.
-3. Convert kits to a data table — unblocks kid-friendly kits and prevents Bug 1's return.
-4. Pictures instead of text labels; 6 big pads; richer tap feedback.
-5. Speed buttons instead of the BPM slider; hold-to-clear; `localStorage` persistence.
-6. Rebuild scheduling on the audio clock (Bug 2), then fix recording against it (Bug 3).
-7. Simplify or remove the step editor; one-button recording; parent gate.
-8. Relative paths in `sw.js` / `manifest.json` (Bug 5) before any public deploy.
+1. **Noise-filter bypass (Bug 1)** — `_noiseVoice()` now wires the filter in one place and
+   returns a gain node; no caller can add a second dry path. Measured 2.86 → 1285 rejection
+   ratio on the closed hat.
+2. **Master gain + limiter** — every voice routes through a 0.7 master gain into a
+   `DynamicsCompressor` at −6 dB / 20:1. Nine pads at once no longer clips. Volume is also
+   adjustable in the grown-up panel.
+3. **Kits as a data table** — `KITS` in `audio-engine.js` describes voices as parameters, and
+   four generic renderers (`osc`, `noise`, `noise+osc`, `clap`) play them. The 190 duplicated
+   lines are gone, string-built method dispatch is gone, and a third kit ("Toy") came almost
+   free. The noise buffer is also generated once and reused instead of per tap.
+4. **Pictures, 6 big pads, richer feedback** — characters (🐘 Boom, 🐸 Frog, 🐍 Hiss, 👏 Clap,
+   🥁 Drum, ⭐ Star) with the word underneath for emerging readers; 2×3 grid at ~177×222 px per
+   pad; press, pop, ripple-from-touch-point, idle breathing, and haptics. Pads also light up
+   in time with the pattern during playback.
+5. **Speed buttons, hold-to-clear, persistence** — 🐢/🐇/🚀 replace the BPM slider; 🧹 requires
+   a 1.5 s hold with a filling ring and offers an undo afterwards; pattern, speed, kit, pad
+   count, and volume persist through `localStorage`.
+6. **Audio-clock scheduling (Bug 2) and recording (Bug 3)** — `Sequencer` schedules 100 ms ahead
+   against `ctx.currentTime` and replays visual updates from a queue on rAF, so lights match
+   sound. `stepForTime()` maps a hit's audio timestamp through the loop anchor, so a hit heard
+   on step *N* lands on step *N*.
+7. **Step editor, one-button recording, parent gate** — the step editor is off by default and
+   becomes a picture grid showing every instrument at once over 8 steps when a grown-up enables
+   it. 🎤 is now the whole recording flow: count-in bar with four dots, one bar captured,
+   auto-stop, confetti and a sparkle chime. The quantize toggle and its broken unquantized
+   branch (Bug 4) are deleted. ⚙ needs a 3 s hold to open kit / pad count / beat maker / volume.
+   A 🎲 button loads one of five ready-made beats for children who can't build one yet.
+8. **Relative paths (Bug 5)** — `sw.js` and `manifest.json` use `./`, the cache is bumped to
+   `beat-pad-v2`, and install failures no longer block the app.
+
+Also fixed along the way: pads and step cells respond to keyboard and switch input, `aria-label`
+on the play button tracks its state, a live region announces recording state, and
+`prefers-reduced-motion` is honoured.
+
+### Still open
+
+- No automated test suite in the repo. `Sequencer.stepForTime` and `Recorder` are pure and worth
+  covering; the verification for this change was done through a throwaway headless-browser
+  script rather than something checked in.
+- Emoji render differently per platform, and a few (🐍, 🦁) are less legible at small sizes than
+  purpose-drawn SVG characters would be.

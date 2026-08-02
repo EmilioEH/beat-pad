@@ -1,52 +1,85 @@
+/**
+ * One-button loop recorder.
+ *
+ *   tap 🎤  →  waiting  →  count-in bar  →  record one bar  →  done
+ *
+ * Always quantized, always exactly one loop long, stops itself. There is
+ * nothing for a child to get wrong and no second button to find.
+ *
+ * Hits are stamped with the audio clock and mapped to steps through the
+ * sequencer's loop anchor, so what you hear is what lands on the grid.
+ */
 class Recorder {
   constructor(sequencer) {
     this.seq = sequencer;
-    this.active = false;
+    this.state = 'idle';   // idle | waiting | countin | recording
     this._hits = [];
-    this._start = 0;
+    this.onState = null;   // (state, added) — added only on the final commit
   }
 
-  start() {
-    this.active = true;
-    this._hits = [];
-    const interval = this.seq.stepInterval();
-    const offset = this.seq.isPlaying ? this.seq.currentStep * interval : 0;
-    this._start = performance.now() - offset;
+  get active() {
+    return this.state !== 'idle';
   }
 
-  hit(pad) {
+  /**
+   * @param {boolean} freshStart true when playback was just started for this
+   *        recording, which makes the first bar the count-in.
+   */
+  arm(freshStart) {
+    if (this.active) return;
+    this._hits = [];
+    this._setState(freshStart ? 'countin' : 'waiting');
+  }
+
+  cancel() {
     if (!this.active) return;
-    this._hits.push({ pad, time: performance.now() - this._start });
-  }
-
-  stop(quantize) {
-    this.active = false;
-    if (this._hits.length === 0) return;
-
-    let result;
-    if (quantize) {
-      result = this._quantize();
-    } else {
-      result = this._hits.map(h => ({ pad: h.pad, step: 0 }));
-    }
-
-    for (const h of result) {
-      this.seq.setStep(h.pad, h.step % this.seq.numSteps, true);
-    }
     this._hits = [];
+    this._setState('idle');
   }
 
-  _quantize() {
-    const interval = this.seq.stepInterval();
+  hit(voice) {
+    if (this.state !== 'countin' && this.state !== 'recording') return;
+    this._hits.push({ voice, time: this.seq.ctx.currentTime });
+  }
+
+  /** Called by the sequencer every time the pattern wraps to step 0. */
+  loopBoundary() {
+    if (this.state === 'waiting') {
+      this._setState('countin');
+      return;
+    }
+    if (this.state === 'countin') {
+      // Keep hits landing just before the downbeat — they belong to step 0.
+      const cutoff = this.seq.ctx.currentTime - this.seq.stepDuration() / 2;
+      this._hits = this._hits.filter(h => h.time >= cutoff);
+      this._setState('recording');
+      return;
+    }
+    if (this.state === 'recording') {
+      const added = this._commit();
+      this.state = 'idle';
+      this.onState?.('done', added);
+      this.onState?.('idle', []);
+    }
+  }
+
+  _commit() {
     const seen = new Set();
-    const out = [];
+    const added = [];
     for (const h of this._hits) {
-      const step = Math.round(h.time / interval) % this.seq.numSteps;
-      const key = h.pad + '-' + step;
+      const step = this.seq.stepForTime(h.time);
+      const key = h.voice + ':' + step;
       if (seen.has(key)) continue;
       seen.add(key);
-      out.push({ pad: h.pad, step });
+      this.seq.setStep(h.voice, step, true);
+      added.push({ voice: h.voice, step });
     }
-    return out;
+    this._hits = [];
+    return added;
+  }
+
+  _setState(s) {
+    this.state = s;
+    this.onState?.(s, []);
   }
 }
