@@ -120,9 +120,9 @@ voices → voiceBus → saturator ─┬─────────────�
 
 Saturation sits before the split so the reverb hears the same glue the dry path
 does. The reverb send is highpassed at 320 Hz — otherwise the kick turns the tail
-to mud — and its impulse response is generated at runtime, so the app still ships
-no audio assets. Each pack sets its own `space` and `trim`, so switching mid-loop
-never jumps in level.
+to mud — and its impulse response is generated at runtime, so the reverb itself
+costs nothing to ship. Each pack sets its own `space` and `trim`, so switching
+mid-loop never jumps in level.
 
 Nine voices firing at once peak at 0.90, below full scale, with the limiter as the
 backstop for a cheap speaker.
@@ -136,9 +136,11 @@ sounds, pad art, suggested tempo, swing, and grooves that belong to it. Tapping
 **Hip Hop** gives you an 808 kit at 92 BPM with a swung groove already on the grid,
 because that is what a genre actually is.
 
-Seven built in: Hip Hop (808), Rock Band, Toy Box, Kitchen, Robot, Jungle, Melody.
+Seven are synthesised and built in: Hip Hop (808), Rock Band, Toy Box, Kitchen,
+Robot, Jungle, Melody. They need no download and work on the very first run.
 Adding one is an edit to this file. `extends` lets a pack override three voices
-without restating nine.
+without restating nine. An eighth, **Real Kit**, is sampled and downloads on
+demand — see *Sampling* below.
 
 The three speed pictures 🐢 🐇 🚀 are now **relative** to the pack's own tempo
 (×0.78, ×1, ×1.32), so they stay three pictures and never become a number.
@@ -186,13 +188,27 @@ a pad you have not sampled yet still plays the 808 sound rather than going dead.
 through the same `sample` layer source, so round-robin variants and soft/hard
 velocity layers work identically for a recorded pad and a published pack.
 
-**No third-party audio is committed.** The loader, manifest format, round-robin,
-velocity layers and service-worker caching are all implemented and tested; adding
-a real pack is a data drop. See [`packs/README.md`](../packs/README.md).
+One real pack ships: **Real Kit** (`packs/realkit/`, 648 KB), a recorded acoustic
+kit assembled from public-domain CC0 samples — fourteen of its sixteen files are
+one kit recorded by one person, which is why each drum's soft and hard takes
+actually match. Sources and processing are in
+[`packs/realkit/CREDITS.md`](../packs/realkit/CREDITS.md).
+
+It carries **velocity layers** on six voices (below velocity 0.55 the genuinely
+softer take plays, and those voices set `velTone: false` because the recording
+already supplies the tone change) and **round-robin** on the snap. Measured: the
+soft snare's crest factor is 18.6 against the hard take's 8.6 — a scaled copy
+would be identical, so the soft take really is a different recording.
+
+Per-voice `gain` in the manifest restores the balance that peak-normalising
+destroys. The pack sums to 0.97× the level of the synth kits, so switching to it
+mid-loop does not jump.
 
 `sw.js` keeps packs in a second cache that release bumps do not evict, and serves
 `packs/index.json` network-first so a pack published after a user's first visit is
-still discovered.
+still discovered. The app waits (up to 3 s) for the worker to control the page
+before downloading packs — otherwise a first visit would put the audio only in the
+HTTP cache, which the browser can evict.
 
 ---
 
@@ -220,5 +236,7 @@ intentions — spectral measurements for the kick, hat, velocity and jitter clai
 above; sample-clock timing and swing quantisation; round-robin and velocity-layer
 selection; the v2 → v3 migration; and a boot smoke pass over the real UI.
 
-24 checks. `tests/audio-checks.js` carries a small FFT so the spectral assertions
-are real measurements.
+30 checks, including the real sample pack's round-robin and velocity layers, that
+the service worker puts pack audio in its durable cache, and that the app boots
+and still loads the pack with the network cut. `tests/audio-checks.js` carries a
+small FFT so the spectral assertions are real measurements.

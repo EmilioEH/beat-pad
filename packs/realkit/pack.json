@@ -1,0 +1,86 @@
+{
+  "label": "Real Kit",
+  "emoji": "🎧",
+  "blurb": "A real drum kit, recorded. Hit softly and you get a different take, not just a quieter one.",
+
+  "tempo": 100,
+  "swing": 0.06,
+  "space": 0.18,
+  "trim": 0.6,
+  "chassis": "#8A5A3B",
+
+  "extends": "band",
+
+  "pads": {
+    "kick":  { "emoji": "🦶", "name": "Stomp",  "real": "Kick",     "color": "#8B5E34" },
+    "snare": { "emoji": "🥁", "name": "Snap",   "real": "Snare",    "color": "#C0392B" },
+    "chh":   { "emoji": "🤫", "name": "Tss",    "real": "Hi-hat",   "color": "#B7950B" },
+    "ohh":   { "emoji": "🌬️", "name": "Whoosh", "real": "Open hat", "color": "#1F8FA8" },
+    "clap":  { "emoji": "🫰", "name": "Click",  "real": "Snap",     "color": "#C2408A" },
+    "tomL":  { "emoji": "🪘", "name": "Low",    "real": "Low tom",  "color": "#196F5E" },
+    "tomH":  { "emoji": "🪘", "name": "High",   "real": "High tom", "color": "#2E6FB8" },
+    "rim":   { "emoji": "🪘", "name": "Mid",    "real": "Mid tom",  "color": "#7D4CC4" },
+    "crash": { "emoji": "💥", "name": "Crash",  "real": "Crash",    "color": "#D14343" }
+  },
+
+  "voices": {
+    "kick": {
+      "variants": ["drum_bass_hard.wav"],
+      "soft": ["drum_bass_soft.wav"],
+      "velTone": false,
+      "gain": 1.0
+    },
+    "snare": {
+      "variants": ["drum_snare_hard.wav"],
+      "soft": ["drum_snare_soft.wav"],
+      "velTone": false,
+      "gain": 0.82
+    },
+    "chh": {
+      "variants": ["drum_cymbal_closed.wav"],
+      "soft": ["drum_cymbal_pedal.wav"],
+      "velTone": false,
+      "gain": 0.4
+    },
+    "ohh": {
+      "variants": ["drum_cymbal_soft.wav"],
+      "gain": 0.4
+    },
+    "clap": {
+      "variants": ["perc_snap.wav", "perc_snap2.wav"],
+      "gain": 0.55
+    },
+    "tomL": {
+      "variants": ["drum_tom_lo_hard.wav"],
+      "soft": ["drum_tom_lo_soft.wav"],
+      "velTone": false,
+      "gain": 0.66,
+      "pan": -0.26
+    },
+    "tomH": {
+      "variants": ["drum_tom_hi_hard.wav"],
+      "soft": ["drum_tom_hi_soft.wav"],
+      "velTone": false,
+      "gain": 0.62,
+      "pan": 0.26
+    },
+    "rim": {
+      "variants": ["drum_tom_mid_hard.wav"],
+      "soft": ["drum_tom_mid_soft.wav"],
+      "velTone": false,
+      "gain": 0.62
+    },
+    "crash": {
+      "variants": ["drum_splash_soft.wav"],
+      "gain": 0.58
+    }
+  },
+
+  "grooves": [
+    { "kick": "X-------X-------", "snare": "----X-------X---", "chh": "x-o-x-o-x-o-x-o-" },
+    { "kick": "X-------X---X---", "snare": "----X-------X---", "chh": "X-x-X-x-X-x-X-x-", "crash": "X---------------" },
+    { "kick": "X---X---X---X---", "snare": "----X-------X---", "ohh": "--o---o---o---o-" },
+    { "kick": "X-----X-X-------", "snare": "----X-------X-o-", "chh": "x-x-x-x-x-x-xxxx", "tomH": "------------o-o-" },
+    { "kick": "X-----x---X-----", "clap": "----X-------X---", "chh": "x-o-x-o-x-o-x-oo", "rim": "--o-------o-----" }
+  ]
+}

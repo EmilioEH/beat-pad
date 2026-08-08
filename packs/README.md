@@ -5,23 +5,24 @@ download, instant on first launch, works offline from the very first run. That
 property is worth keeping, so sample packs live here instead: fetched on demand,
 cached permanently by the service worker, and never required for the app to work.
 
-**No audio is committed to this directory.** The loader, the manifest format, the
-round-robin and velocity-layer playback, and the service-worker caching are all
-implemented and live — the mic sampler (`js/sampler.js`) exercises exactly the
-same playback path. Dropping a real pack in here is a data change, not a code
-change.
+One pack ships: **`realkit/`**, a recorded acoustic kit built from public-domain
+(CC0) samples — see [`realkit/CREDITS.md`](realkit/CREDITS.md) for sources and
+processing. It is the worked example for everything below, and it exercises both
+of the features that separate a sampled kit from a sample player: velocity layers
+on six voices and round-robin on the snap.
+
+Adding another pack is a data change, not a code change.
 
 ## Layout
 
 ```
 packs/
   index.json            ← list of published packs (optional)
-  vinyl/
+  realkit/
     pack.json           ← the manifest
-    kick-1.mp3
-    kick-2.mp3
-    kick-soft.mp3
-    snare-1.mp3
+    CREDITS.md
+    drum_bass_hard.wav
+    drum_bass_soft.wav
     ...
 ```
 
@@ -29,7 +30,7 @@ packs/
 
 ```json
 [
-  { "id": "vinyl", "label": "Vinyl", "emoji": "💿", "bytes": 240000 }
+  { "id": "realkit", "label": "Real Kit", "emoji": "🎧", "bytes": 648322 }
 ]
 ```
 
@@ -107,10 +108,17 @@ So `X---x---X---x---` is four-on-the-floor accented on beats 1 and 3.
 
 ## Audio format
 
-Mono, 22–44.1 kHz, MP3 (universally decodable including Safari). Keep each hit
-short — trim the silence off the front, since the loader plays from sample zero.
-A nine-voice kit with two variants each lands around 200–300 KB, which the
-service worker caches on first use and then serves offline forever.
+Mono WAV is the safe default. `decodeAudioData` handles FLAC unevenly across
+Safari versions and this app is meant to run on an iPad, so lossless-but-risky is
+a bad trade; MP3 and AAC are fine too if you have an encoder. `realkit` is 32 kHz
+mono 16-bit WAV — everything up to 16 kHz, which is all the cymbal air that
+matters, at about a quarter less size than 44.1.
+
+Trim the silence off the front, since the loader plays from sample zero, and set
+per-voice `gain` to restore the balance that peak-normalising destroys: a hi-hat
+and a kick normalised to the same peak are not a drum kit. `realkit` is 648 KB for
+sixteen files across nine voices, cached by the service worker on first use and
+served offline from then on.
 
 ## Caching
 

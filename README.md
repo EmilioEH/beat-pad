@@ -36,8 +36,12 @@ pentatonic Melody pack where no combination of notes sounds wrong. A pack carrie
 its sounds, its pad art, its tempo, its swing and its own grooves, because that is
 what a genre actually is.
 
-Packs are data: adding one is an edit to [`js/packs.js`](js/packs.js). Sample-based
-packs load on demand from [`packs/`](packs/README.md).
+An eighth, **Real Kit**, is a recorded acoustic kit built from public-domain CC0
+samples. It downloads on demand (648 KB), then works offline forever — hit a pad
+softly and you get a genuinely softer *take*, not the same hit turned down.
+
+Packs are data: adding a synth pack is an edit to [`js/packs.js`](js/packs.js), and
+a sampled one is a manifest plus audio in [`packs/`](packs/README.md).
 
 ## Tests
 

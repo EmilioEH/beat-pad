@@ -41,7 +41,13 @@ async function fetchPackIndex() {
  */
 async function loadSamplePack(engine, id) {
   if (!engine || !engine.ctx) return null;
-  if (PACKS[id] && PACKS[id].loaded) return id;
+  // Already published *and* this engine holds the buffers. The second half
+  // matters: sample banks live on the engine, so a different engine (an
+  // offline render, say) still needs them even though PACKS is global.
+  if (PACKS[id] && PACKS[id].loaded) {
+    const first = Object.keys(PACKS[id].voices || {})[0];
+    if (first && engine.hasSample(id, first)) return id;
+  }
 
   let manifest;
   try {

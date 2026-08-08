@@ -102,8 +102,32 @@ document.addEventListener('DOMContentLoaded', () => {
   discoverSamplePacks();
 });
 
+/**
+ * Wait — briefly — for the service worker to take control of this page.
+ *
+ * On a first visit the worker is still installing while the app is already
+ * running, so anything fetched now bypasses it and lands only in the HTTP
+ * cache, which the browser may evict. Pack audio is exactly what must not
+ * evaporate, so hold the download until the worker can intercept it. Capped,
+ * because no service worker at all must never mean no packs at all.
+ */
+function serviceWorkerReady(maxMs = 3000) {
+  if (!('serviceWorker' in navigator)) return Promise.resolve();
+  if (navigator.serviceWorker.controller) return Promise.resolve();
+
+  const controlled = navigator.serviceWorker.ready.then(() => {
+    if (navigator.serviceWorker.controller) return;
+    return new Promise(resolve => {
+      navigator.serviceWorker.addEventListener('controllerchange', resolve, { once: true });
+    });
+  }).catch(() => {});
+
+  return Promise.race([controlled, new Promise(r => setTimeout(r, maxMs))]);
+}
+
 /** Publish any sample packs that happen to be hosted alongside the app. */
 async function discoverSamplePacks() {
+  await serviceWorkerReady();
   const index = await fetchPackIndex();
   if (!index.length) return;
   for (const entry of index) {

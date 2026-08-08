@@ -168,6 +168,144 @@ const dim = s => `\x1b[2m${s}\x1b[0m`;
     });
   }
 
+  /* ── the real CC0 sample pack ───────────────────────────────── */
+  {
+    await page.waitForFunction(
+      () => !!(typeof PACKS !== 'undefined' && PACKS.realkit && PACKS.realkit.loaded),
+      null, { timeout: 20000 }
+    ).catch(() => {});
+
+    const pack = await page.evaluate(async () => {
+      const SR = 44100;
+      const V = ['kick', 'snare', 'chh', 'ohh', 'clap', 'tomL', 'tomH', 'rim', 'crash'];
+
+      const engine = new AudioEngine();
+      const oc = new OfflineAudioContext(2, SR * 3, SR);
+      engine.init(oc);
+      await loadSamplePack(engine, 'realkit');
+      engine.setPack('realkit');
+      engine.setVolume(1);
+
+      const bank = v => engine._samples.get('realkit:' + v);
+      const withSoft = V.filter(v => bank(v) && bank(v).soft && bank(v).soft.length);
+      const rr = V.filter(v => bank(v) && bank(v).hard.length > 1);
+
+      // Two snaps in a row must not be the same waveform twice.
+      engine.play('clap', 0.0, 1);
+      engine.play('clap', 1.0, 1);
+      // A soft snare must be the softer *take*, not the hard one turned down.
+      engine.play('snare', 2.0, 0.3);
+      const buf = await oc.startRendering();
+      const d = buf.getChannelData(0);
+
+      const stat = (from, to) => {
+        let s = 0, pk = 0, n = 0;
+        for (let i = Math.floor(from * SR); i < Math.floor(to * SR); i++) {
+          s += d[i] * d[i]; pk = Math.max(pk, Math.abs(d[i])); n++;
+        }
+        return { rms: Math.sqrt(s / n), peak: pk };
+      };
+      const a = stat(0.0, 0.9), b = stat(1.0, 1.9), soft = stat(2.0, 2.9);
+
+      // Rendered separately so the hard take isn't scaled by the soft velocity.
+      const oc2 = new OfflineAudioContext(2, SR, SR);
+      const e2 = new AudioEngine();
+      e2.init(oc2);
+      await loadSamplePack(e2, 'realkit');
+      e2.setPack('realkit');
+      e2.setVolume(1);
+      e2.play('snare', 0, 1);
+      const b2 = await oc2.startRendering();
+      const dh = b2.getChannelData(0);
+      let sh = 0, ph = 0;
+      for (let i = 0; i < dh.length; i++) { sh += dh[i] * dh[i]; ph = Math.max(ph, Math.abs(dh[i])); }
+      const hard = { rms: Math.sqrt(sh / dh.length), peak: ph };
+
+      return {
+        voices: V.filter(v => !!bank(v)).length,
+        withSoft: withSoft.length,
+        rr,
+        rrDiff: Math.abs(a.rms - b.rms) / Math.max(a.rms, b.rms),
+        // crest factor: identical to the hard take if it were merely scaled
+        hardCrest: hard.peak / hard.rms,
+        softCrest: soft.peak / soft.rms,
+        label: PACKS.realkit && PACKS.realkit.label,
+      };
+    });
+
+    results.push({
+      name: 'the CC0 Real Kit pack downloads, decodes and covers all nine pads',
+      pass: pack.voices === 9 && pack.label === 'Real Kit',
+      detail: `${pack.voices}/9 voices decoded from packs/realkit/pack.json`,
+    });
+    results.push({
+      name: 'velocity layers: soft hits play a different take, not a quieter one',
+      pass: pack.withSoft === 6 && Math.abs(pack.softCrest - pack.hardCrest) / pack.hardCrest > 0.1,
+      detail: `${pack.withSoft} voices carry a soft take; snare crest factor ` +
+              `${pack.hardCrest.toFixed(1)} hard vs ${pack.softCrest.toFixed(1)} soft ` +
+              `(a scaled copy would be identical)`,
+    });
+    results.push({
+      name: 'round-robin: a repeated snap alternates takes',
+      pass: pack.rr.length >= 1 && pack.rrDiff > 0.05,
+      detail: `${pack.rr.join(',')} has multiple variants; consecutive hits differ by ` +
+              `${(pack.rrDiff * 100).toFixed(0)}%`,
+    });
+
+    const chipsNow = await page.locator('#packStrip .chip').count();
+    results.push({
+      name: 'the downloaded pack joins the strip alongside the built-ins',
+      pass: chipsNow >= 8,
+      detail: `${chipsNow} packs in the strip`,
+    });
+  }
+
+  /* ── offline: the pack survives losing the network ──────────── */
+  {
+    const p3 = await browser.newPage();
+    p3.on('pageerror', e => errors.push('offline: ' + e));
+    await p3.goto(`http://localhost:${PORT}/index.html`);
+    await p3.waitForFunction(() => typeof seq !== "undefined" && !!seq);
+    // First visit warms the service worker's pack cache.
+    await p3.waitForFunction(
+      () => !!(typeof PACKS !== 'undefined' && PACKS.realkit && PACKS.realkit.loaded),
+      null, { timeout: 20000 }
+    ).catch(() => {});
+    await p3.waitForTimeout(600);
+
+    const cached = await p3.evaluate(async () => {
+      const names = await caches.keys();
+      const packCache = names.find(n => n.startsWith('beat-pad-packs'));
+      if (!packCache) return { names, entries: 0 };
+      const c = await caches.open(packCache);
+      return { names, entries: (await c.keys()).length };
+    });
+
+    await p3.context().setOffline(true);
+    await p3.reload();
+    const offline = await p3.waitForFunction(
+      () => typeof seq !== "undefined" && !!seq, null, { timeout: 15000 }
+    ).then(() => true).catch(() => false);
+    const offlinePads = offline ? await p3.locator('#padGrid .pad').count() : 0;
+    const offlinePack = offline ? await p3.evaluate(async () => {
+      await new Promise(r => setTimeout(r, 1500));
+      return !!(PACKS.realkit && PACKS.realkit.loaded);
+    }) : false;
+    await p3.context().setOffline(false);
+
+    results.push({
+      name: 'the service worker caches pack audio in its own cache',
+      pass: cached.entries >= 17,
+      detail: `${cached.entries} entries in ${cached.names.filter(n => n.includes('packs')).join(',') || 'no pack cache'}`,
+    });
+    results.push({
+      name: 'app boots and the sample pack still loads with the network cut',
+      pass: offline && offlinePads === 6 && offlinePack,
+      detail: offline ? `${offlinePads} pads, realkit ${offlinePack ? 'loaded' : 'MISSING'} offline`
+                      : 'app failed to boot offline',
+    });
+  }
+
   /* ── v2 → v3 migration, in a fresh page ─────────────────────── */
   {
     const p2 = await browser.newPage();
