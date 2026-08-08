@@ -4,6 +4,13 @@
    [hidden]. Without this, "hidden" overlays stay on screen and eat taps. */
 [hidden]{display:none!important}
 
+:root{
+  --chassis:#6D5BD0;
+  --shell:#1B1726;
+  --ink:#F4EFFF;
+  --led:#FFE27A;
+}
+
 html,body{
   height:100%;overflow:hidden;
   touch-action:manipulation;-webkit-tap-highlight-color:transparent;
@@ -12,16 +19,37 @@ html,body{
 
 body{
   font-family:'Nunito',-apple-system,system-ui,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
-  background:linear-gradient(170deg,#FFF6E5 0%,#FFE9D6 45%,#DFF3FF 100%);
-  color:#3B3355;
+  background:radial-gradient(120% 90% at 50% 0%,#3A3350 0%,#211D2E 55%,#15121F 100%);
+  color:var(--ink);
   display:flex;justify-content:center;align-items:center;
 }
 
 #app{
   position:relative;
-  width:100%;max-width:520px;height:100dvh;
-  display:flex;flex-direction:column;gap:10px;
-  padding:calc(10px + env(safe-area-inset-top)) 12px calc(10px + env(safe-area-inset-bottom));
+  width:100%;max-width:540px;height:100dvh;
+  padding:calc(6px + env(safe-area-inset-top)) 8px calc(6px + env(safe-area-inset-bottom));
+  display:flex;
+}
+
+/* ═══ The device itself ═══
+   A chassis with a bezel, not a web page. The colour comes from the
+   active pack, so changing sounds visibly changes the machine. */
+#device{
+  /* min-width:0 matters: without it the scrolling pack strip's content sets
+     the flex base size and pushes the whole device wider than the screen. */
+  flex:1;min-height:0;min-width:0;
+  display:flex;flex-direction:column;gap:8px;
+  padding:10px;
+  border-radius:26px;
+  background:
+    linear-gradient(180deg,color-mix(in srgb,var(--chassis) 82%,#fff 6%) 0%,
+                          color-mix(in srgb,var(--chassis) 88%,#000 18%) 100%);
+  box-shadow:
+    inset 0 2px 0 rgba(255,255,255,.28),
+    inset 0 -3px 0 rgba(0,0,0,.28),
+    0 10px 0 color-mix(in srgb,var(--chassis) 55%,#000),
+    0 18px 40px rgba(0,0,0,.45);
+  transition:background .35s ease,box-shadow .35s ease;
 }
 
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
@@ -29,166 +57,311 @@ body{
 /* ═══ Chunky control buttons ═══ */
 .ctl{
   position:relative;overflow:hidden;
-  border:none;border-radius:20px;
-  background:#fff;color:#3B3355;
-  box-shadow:0 5px 0 #E4D9C8,0 7px 14px rgba(90,60,20,.14);
+  border:none;border-radius:16px;
+  background:linear-gradient(180deg,#F7F3FF,#DCD4EC);
+  color:#2A2438;
+  box-shadow:0 4px 0 rgba(0,0,0,.32),inset 0 1px 0 rgba(255,255,255,.7);
   cursor:pointer;display:flex;align-items:center;justify-content:center;
-  transition:transform .08s ease,box-shadow .08s ease,background .15s ease;
+  transition:transform .07s ease,box-shadow .07s ease,background .15s ease;
   flex-shrink:0;
 }
-.ctl .glyph{font-size:clamp(22px,6.5vw,30px);line-height:1;pointer-events:none}
-.ctl:active{transform:translateY(4px);box-shadow:0 1px 0 #E4D9C8,0 2px 6px rgba(90,60,20,.14)}
-.ctl:focus-visible{outline:4px solid #3B82F6;outline-offset:3px}
-.ctl.big{width:clamp(56px,15vw,72px);height:clamp(56px,15vw,72px)}
-.ctl.tiny{width:40px;height:40px;border-radius:14px;opacity:.55}
-.ctl.tiny .glyph{font-size:18px}
+.ctl .glyph{font-size:clamp(19px,5.4vw,26px);line-height:1;pointer-events:none}
+.ctl:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.32)}
+.ctl:focus-visible{outline:4px solid #FFE27A;outline-offset:3px}
+.ctl.big{width:clamp(46px,12.5vw,60px);height:clamp(46px,12.5vw,60px)}
+.ctl.small{width:clamp(38px,10vw,46px);height:clamp(38px,10vw,46px);border-radius:13px}
+.ctl.tiny{width:34px;height:34px;border-radius:11px;opacity:.6}
+.ctl.tiny .glyph{font-size:16px}
 
-.ctl.on{background:#FFE27A;box-shadow:0 5px 0 #E0B93C,0 7px 14px rgba(90,60,20,.2)}
-#recBtn.on{background:#FF7A7A;box-shadow:0 5px 0 #D24B4B,0 7px 14px rgba(120,20,20,.24);animation:throb .7s ease-in-out infinite}
-#recBtn.waiting{background:#FFD9A8;box-shadow:0 5px 0 #E0AC6A,0 7px 14px rgba(90,60,20,.2);animation:throb 1s ease-in-out infinite}
+.ctl.on{background:linear-gradient(180deg,#FFF0B0,#FFD23F);box-shadow:0 4px 0 #A8791A,0 0 18px rgba(255,210,63,.5)}
+#recBtn.on{background:linear-gradient(180deg,#FF9A9A,#FF4D4D);color:#fff;
+  box-shadow:0 4px 0 #9B1B1B,0 0 20px rgba(255,77,77,.55);animation:throb .7s ease-in-out infinite}
+#recBtn.waiting{background:linear-gradient(180deg,#FFD9A8,#FFB25C);animation:throb 1s ease-in-out infinite}
 @keyframes throb{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
 
 /* Fill that grows while a hold-to-activate button is held */
 .hold-fill{
   position:absolute;inset:0;border-radius:inherit;
-  background:rgba(59,130,246,.45);
+  background:rgba(59,130,246,.5);
   transform:scaleY(0);transform-origin:bottom;pointer-events:none;
 }
 .holding .hold-fill{transform:scaleY(1);transition:transform var(--hold,1500ms) linear}
 
 /* ═══ Top bar ═══ */
-#topBar{display:flex;align-items:center;gap:10px;flex-shrink:0}
-#speeds{display:flex;gap:8px;margin:0 auto}
-.ctl.speed{width:clamp(48px,13vw,60px);height:clamp(48px,13vw,60px);border-radius:18px;filter:saturate(.5) opacity(.75)}
-.ctl.speed.on{filter:none;background:#B9F0C6;box-shadow:0 5px 0 #6FCB8B,0 7px 14px rgba(20,90,40,.2)}
+#topBar{display:flex;align-items:center;gap:8px;flex-shrink:0}
+#speeds{display:flex;gap:6px;margin:0 auto}
+.ctl.speed{width:clamp(40px,11vw,50px);height:clamp(40px,11vw,50px);border-radius:14px;
+  filter:saturate(.45) brightness(.92)}
+.ctl.speed.on{filter:none;background:linear-gradient(180deg,#CFF7D8,#7EE0A0);box-shadow:0 4px 0 #3E8F5C}
 
-/* ═══ Pads ═══ */
+/* ═══ Step lights — the running lights on the front of the machine ═══ */
+#steps{
+  display:flex;gap:3px;align-items:center;justify-content:space-between;
+  padding:6px 8px;border-radius:12px;flex-shrink:0;
+  background:rgba(0,0,0,.34);
+  box-shadow:inset 0 2px 5px rgba(0,0,0,.5);
+}
+#steps i{
+  flex:1;height:7px;border-radius:4px;
+  background:rgba(255,255,255,.14);
+  transition:background .06s linear,box-shadow .06s linear;
+}
+#steps i.beat{height:11px;background:rgba(255,255,255,.26)}
+#steps i.on{background:var(--led);box-shadow:0 0 10px var(--led)}
+
+/* ═══ Pack strip ═══ */
+#packStrip{
+  display:flex;gap:6px;flex-shrink:0;min-width:0;
+  overflow-x:auto;overflow-y:hidden;
+  scrollbar-width:none;-webkit-overflow-scrolling:touch;
+  padding-bottom:2px;
+}
+#packStrip::-webkit-scrollbar{display:none}
+.chip{
+  flex:0 0 auto;border:none;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:1px;
+  padding:5px 10px;border-radius:13px;
+  background:rgba(0,0,0,.26);color:rgba(255,255,255,.72);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12);
+  font:inherit;
+  transition:background .15s ease,color .15s ease,transform .08s ease;
+}
+.chip .chipEmoji{font-size:19px;line-height:1}
+.chip .chipName{font-size:10px;font-weight:800;letter-spacing:.02em;white-space:nowrap}
+.chip.on{background:rgba(255,255,255,.94);color:#241F33;box-shadow:0 0 16px rgba(255,255,255,.35)}
+.chip:active{transform:scale(.94)}
+.chip:focus-visible{outline:3px solid #FFE27A;outline-offset:2px}
+
+/* ═══ Pads ═══
+   Three states, the language every real machine speaks:
+     dark   nothing on this pad
+     lit    this pad is in the pattern
+     flash  firing right now, brightness follows how hard it was hit
+   There is deliberately no idle animation. Hardware doesn't fidget. */
 #padGrid{
   flex:1;display:grid;
-  grid-template-columns:repeat(2,1fr);gap:12px;min-height:0;
+  grid-template-columns:repeat(2,1fr);gap:8px;min-height:0;
+  padding:8px;border-radius:18px;
+  background:rgba(0,0,0,.22);box-shadow:inset 0 3px 8px rgba(0,0,0,.42);
 }
 #padGrid.nine{grid-template-columns:repeat(3,1fr)}
 
 .pad{
   position:relative;overflow:hidden;
-  border:none;border-radius:28px;
-  background:var(--c);
-  box-shadow:0 8px 0 color-mix(in srgb,var(--c) 62%,#000),0 12px 22px rgba(60,40,10,.22);
-  color:#fff;cursor:pointer;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
-  transition:transform .07s ease,box-shadow .07s ease;
-  animation:breathe 3.6s ease-in-out infinite;animation-delay:var(--delay,0s);
+  border:none;border-radius:18px;
+  background:color-mix(in srgb,var(--c) 20%,#17141F);
+  box-shadow:
+    inset 0 2px 0 rgba(255,255,255,.10),
+    inset 0 -3px 0 rgba(0,0,0,.4),
+    0 5px 0 rgba(0,0,0,.42);
+  color:rgba(255,255,255,.5);cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+  transition:transform .07s ease,box-shadow .12s ease,background .18s ease,color .18s ease;
   touch-action:manipulation;
 }
-@keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.018)}}
+.pad .face{font-size:clamp(28px,10vw,52px);line-height:1;pointer-events:none;
+  filter:grayscale(.55) brightness(.8);transition:filter .18s ease}
+.pad .cap{font-size:clamp(9px,2.7vw,13px);font-weight:800;letter-spacing:.04em;
+  text-transform:uppercase;pointer-events:none;opacity:.75}
+.pad .badge{position:absolute;top:5px;right:7px;font-size:15px;line-height:1;pointer-events:none}
 
-.pad .face{font-size:clamp(38px,13vw,68px);line-height:1;pointer-events:none;
-  filter:drop-shadow(0 3px 4px rgba(0,0,0,.28))}
-.pad .cap{font-size:clamp(11px,3.2vw,16px);font-weight:800;letter-spacing:.03em;
-  text-shadow:0 2px 5px rgba(0,0,0,.35);pointer-events:none}
+/* Lit: this pad has steps in the pattern you're hearing. */
+.pad.armed{
+  background:color-mix(in srgb,var(--c) 88%,#17141F);
+  color:#fff;
+  box-shadow:
+    inset 0 2px 0 rgba(255,255,255,.3),
+    inset 0 -3px 0 rgba(0,0,0,.32),
+    0 5px 0 color-mix(in srgb,var(--c) 45%,#000),
+    0 0 20px color-mix(in srgb,var(--c) 50%,transparent);
+}
+.pad.armed .face{filter:none}
+.pad.armed .cap{opacity:1}
 
-.pad:active{transform:translateY(6px) scale(.98);
-  box-shadow:0 2px 0 color-mix(in srgb,var(--c) 62%,#000),0 4px 10px rgba(60,40,10,.22);
-  animation:none}
-.pad:focus-visible{outline:5px solid #3B3355;outline-offset:4px}
+.pad.muted{background:#242030;color:rgba(255,255,255,.3);box-shadow:inset 0 2px 6px rgba(0,0,0,.5)}
+.pad.muted .face{filter:grayscale(1) brightness(.5)}
 
-/* Fired by a tap or by the sequencer, so pads dance to their own pattern */
-.pad.hit{animation:pop .28s ease-out}
+.pad:active{transform:translateY(4px);box-shadow:inset 0 2px 0 rgba(255,255,255,.1),0 1px 0 rgba(0,0,0,.42)}
+.pad:focus-visible{outline:4px solid #FFE27A;outline-offset:3px}
+
+/* The flash. Opacity tracks velocity, so a soft hit glows less. */
+.pad::after{
+  content:'';position:absolute;inset:0;border-radius:inherit;
+  background:radial-gradient(circle at 50% 45%,#fff,rgba(255,255,255,.25) 70%,transparent);
+  opacity:0;pointer-events:none;
+}
+.pad.hit::after{animation:flash .3s ease-out}
+@keyframes flash{
+  0%{opacity:calc(.25 + var(--vel,1) * .6)}
+  100%{opacity:0}
+}
+.pad.hit{animation:pop .22s ease-out}
 @keyframes pop{
   0%{transform:scale(1)}
-  30%{transform:scale(1.09) rotate(-2deg)}
-  60%{transform:scale(.97) rotate(1.5deg)}
+  28%{transform:scale(1.05)}
   100%{transform:scale(1)}
 }
 
+/* Held pad, rolling in time. */
+.pad.rolling{outline:3px solid var(--led);outline-offset:-4px;animation:rollPulse .34s ease-in-out infinite}
+@keyframes rollPulse{0%,100%{outline-color:var(--led)}50%{outline-color:transparent}}
+
+.pad.listening{outline:4px solid #FF4D4D;outline-offset:-4px;animation:throb .7s ease-in-out infinite}
+
 .ripple{
   position:absolute;width:24px;height:24px;border-radius:50%;
-  background:rgba(255,255,255,.75);
+  background:rgba(255,255,255,.6);
   transform:translate(-50%,-50%) scale(0);
   pointer-events:none;animation:ripple .55s ease-out forwards;
 }
 @keyframes ripple{to{transform:translate(-50%,-50%) scale(16);opacity:0}}
 
+/* Mode tints, so a modal state is never a surprise. */
+body.muting #padGrid{box-shadow:inset 0 0 0 3px #FFD23F,inset 0 3px 8px rgba(0,0,0,.42)}
+body.sampling #padGrid{box-shadow:inset 0 0 0 3px #FF4D4D,inset 0 3px 8px rgba(0,0,0,.42)}
+
 /* ═══ Beat maker ═══ */
-#beatMaker{flex:1;display:flex;flex-direction:column;justify-content:center;gap:10px;min-height:0}
-.mrow{display:flex;align-items:center;gap:6px}
+#beatMaker{
+  flex:1;display:flex;flex-direction:column;justify-content:center;gap:5px;min-height:0;
+  padding:8px 6px;border-radius:18px;
+  background:rgba(0,0,0,.22);box-shadow:inset 0 3px 8px rgba(0,0,0,.42);
+}
+.mrow{display:flex;align-items:stretch;gap:3px;flex:1 1 0;min-height:0;max-height:54px}
+.mrow.muted{opacity:.4}
 .mhead{
-  flex-shrink:0;width:clamp(38px,11vw,52px);height:clamp(38px,11vw,52px);
-  border:none;border-radius:16px;background:var(--c);
-  font-size:clamp(20px,6vw,28px);line-height:1;cursor:pointer;
-  box-shadow:0 4px 0 color-mix(in srgb,var(--c) 62%,#000);
+  flex-shrink:0;width:clamp(30px,8vw,40px);
+  border:none;border-radius:10px;background:var(--c);
+  font-size:clamp(15px,4.2vw,20px);line-height:1;cursor:pointer;
+  box-shadow:0 3px 0 color-mix(in srgb,var(--c) 55%,#000);
 }
-.mhead:active{transform:translateY(3px);box-shadow:0 1px 0 color-mix(in srgb,var(--c) 62%,#000)}
+.mrow.muted .mhead{filter:grayscale(1)}
+.mhead:active{transform:translateY(2px);box-shadow:0 1px 0 color-mix(in srgb,var(--c) 55%,#000)}
+.mhead:focus-visible{outline:3px solid #FFE27A;outline-offset:2px}
+
 .mcell{
-  flex:1;aspect-ratio:1;min-width:0;
-  border:3px solid rgba(90,70,120,.18);border-radius:14px;
-  background:rgba(255,255,255,.7);cursor:pointer;
-  transition:transform .1s ease,background .12s ease;
+  flex:1;min-width:0;
+  border:2px solid rgba(255,255,255,.09);border-radius:7px;
+  background:rgba(255,255,255,.04);cursor:pointer;padding:0;
+  transition:transform .1s ease,background .12s ease,border-color .12s ease;
 }
-.mcell.on{background:var(--c);border-color:color-mix(in srgb,var(--c) 60%,#000);
-  box-shadow:inset 0 -4px 0 color-mix(in srgb,var(--c) 68%,#000)}
-.mcell.current{outline:4px solid #3B3355;outline-offset:2px}
-.mcell:active{transform:scale(.9)}
+/* The four big beats read differently from the twelve sixteenths between
+   them — this is the whole "four big beats and the little ones" idea, and
+   it has to be visible at a glance or the grid is just 16 identical boxes. */
+.mcell.beat{
+  border-color:rgba(255,255,255,.5);
+  background:rgba(255,255,255,.16);
+  margin-left:3px;
+}
+/* Both the head and the cells are <button>, so :first-of-type would never
+   match a cell — target the one that actually follows the head. */
+.mhead + .mcell{margin-left:0}
+.mcell.on{
+  background:color-mix(in srgb,var(--c) calc(var(--v,.7) * 100%),#17141F);
+  border-color:color-mix(in srgb,var(--c) 70%,#000);
+}
+.mcell.accent{box-shadow:0 0 10px color-mix(in srgb,var(--c) 65%,transparent);
+  border-color:#fff}
+.mcell.current{outline:3px solid var(--led);outline-offset:1px}
+.mcell:active{transform:scale(.88)}
+.mcell:focus-visible{outline:3px solid #FFE27A;outline-offset:2px}
+
+/* ═══ Studio strip ═══ */
+#studioStrip{display:flex;align-items:center;gap:8px;flex-shrink:0}
+#banks{display:flex;gap:5px}
+.ctl.card{
+  width:clamp(34px,9vw,42px);height:clamp(34px,9vw,42px);border-radius:12px;
+  background:rgba(0,0,0,.3);color:rgba(255,255,255,.55);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.12);
+}
+.ctl.card .glyph{font-size:15px;font-weight:900}
+.ctl.card.filled{color:#fff;background:rgba(255,255,255,.2)}
+.ctl.card.on{background:linear-gradient(180deg,#FFF0B0,#FFD23F);color:#241F33;box-shadow:0 3px 0 #A8791A}
+.ctl.card.queued{animation:throb .5s ease-in-out infinite;background:rgba(255,210,63,.4);color:#fff}
+
+#swingWrap{
+  flex:1;display:flex;align-items:center;gap:6px;min-width:0;
+  padding:0 10px;height:clamp(34px,9vw,42px);border-radius:12px;
+  background:rgba(0,0,0,.3);box-shadow:inset 0 1px 0 rgba(255,255,255,.12);
+}
+#swingWrap .glyph{font-size:16px;flex-shrink:0}
+#swingSlider{flex:1;min-width:0;accent-color:#FFD23F;background:transparent}
+#swingSlider:focus-visible{outline:3px solid #FFE27A;outline-offset:3px}
 
 /* ═══ Bottom bar ═══ */
-#bottomBar{display:flex;align-items:center;justify-content:center;gap:12px;flex-shrink:0}
+#bottomBar{display:flex;align-items:center;justify-content:center;gap:7px;flex-shrink:0}
+#muteBtn.on{background:linear-gradient(180deg,#FFF0B0,#FFD23F)}
 
 /* ═══ Overlays ═══ */
 #hint{
   position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
-  font-size:64px;pointer-events:none;z-index:5;
+  font-size:60px;pointer-events:none;z-index:5;
   animation:tapHint 1.6s ease-in-out infinite;
-  filter:drop-shadow(0 4px 8px rgba(0,0,0,.3));
+  filter:drop-shadow(0 4px 8px rgba(0,0,0,.5));
 }
 #hint.gone{display:none}
 @keyframes tapHint{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-40%) scale(1.16)}}
 
 #fx{position:absolute;left:50%;top:45%;width:0;height:0;pointer-events:none;z-index:9}
-.bit{
-  position:absolute;font-size:30px;left:0;top:0;
-  animation:fly .95s ease-out forwards;
-}
+.bit{position:absolute;font-size:30px;left:0;top:0;animation:fly .95s ease-out forwards}
 @keyframes fly{
   0%{transform:translate(-50%,-50%) scale(.4);opacity:0}
   25%{opacity:1}
   100%{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(1.25);opacity:0}
 }
 
+#toast{
+  position:absolute;left:50%;bottom:calc(84px + env(safe-area-inset-bottom));
+  transform:translateX(-50%);z-index:12;pointer-events:none;
+  max-width:88%;text-align:center;
+  padding:9px 16px;border-radius:14px;
+  background:rgba(20,16,30,.94);color:#fff;
+  font-size:14px;font-weight:800;
+  box-shadow:0 6px 20px rgba(0,0,0,.5);
+}
+
 #countIn{
   position:absolute;inset:0;z-index:8;pointer-events:none;
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;
-  background:rgba(255,246,229,.72);backdrop-filter:blur(2px);
+  background:rgba(20,16,30,.72);backdrop-filter:blur(2px);
 }
 #countDots{display:flex;gap:16px}
 #countDots i{
   width:26px;height:26px;border-radius:50%;
-  background:rgba(90,70,120,.2);transition:transform .12s ease,background .12s ease;
+  background:rgba(255,255,255,.18);transition:transform .12s ease,background .12s ease;
 }
-#countDots i.on{background:#FF7A7A;transform:scale(1.35)}
-#countLabel{font-size:56px;animation:throb .7s ease-in-out infinite}
+#countDots i.on{background:#FF4D4D;transform:scale(1.35);box-shadow:0 0 16px rgba(255,77,77,.7)}
+#countLabel{font-size:54px;animation:throb .7s ease-in-out infinite}
 
 /* ═══ Parent panel ═══ */
 #parentPanel{
   position:fixed;inset:0;z-index:20;
   display:flex;align-items:flex-end;justify-content:center;
-  background:rgba(40,30,60,.45);
+  background:rgba(10,8,16,.6);
 }
 #parentPanel .sheet{
-  width:100%;max-width:520px;
-  background:#fff;border-radius:26px 26px 0 0;
+  width:100%;max-width:540px;
+  background:#FFFDF8;color:#2A2438;border-radius:26px 26px 0 0;
   padding:22px 20px calc(22px + env(safe-area-inset-bottom));
-  display:flex;flex-direction:column;gap:16px;
+  display:flex;flex-direction:column;gap:14px;
+  max-height:88dvh;overflow-y:auto;
 }
 #parentPanel h2{font-size:19px;font-weight:800}
 #parentPanel .row{display:flex;align-items:center;justify-content:space-between;gap:14px;font-size:15px;font-weight:600}
 #parentPanel select,#parentPanel input[type=range]{
-  font:inherit;font-size:14px;max-width:60%;
-  padding:8px 10px;border-radius:12px;border:2px solid #E4D9C8;background:#FFFDF8;color:inherit;
+  font:inherit;font-size:14px;max-width:62%;
+  padding:8px 10px;border-radius:12px;border:2px solid #E4D9C8;background:#fff;color:inherit;
 }
-#parentPanel input[type=checkbox]{width:26px;height:26px;accent-color:#3B82F6}
-#parentPanel .primary{
-  margin-top:4px;padding:15px;border:none;border-radius:16px;
-  background:#3B82F6;color:#fff;font:inherit;font-size:16px;font-weight:800;cursor:pointer;
+#parentPanel .note{font-size:13px;line-height:1.5;opacity:.7}
+#parentPanel .primary,#parentPanel .secondary{
+  padding:14px;border:none;border-radius:14px;
+  font:inherit;font-size:15px;font-weight:800;cursor:pointer;
+}
+#parentPanel .primary{background:#3B82F6;color:#fff}
+#parentPanel .secondary{background:#EFEAF8;color:#2A2438}
+
+@media (max-height:660px){
+  .pad .face{font-size:clamp(24px,8vw,40px)}
+  #packStrip .chipName{display:none}
 }
 
 @media (prefers-reduced-motion:reduce){
