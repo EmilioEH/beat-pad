@@ -1,5 +1,10 @@
 # Beat Pad — Analysis for Ages 3–6
 
+> **Superseded by [`design.md`](design.md).** This document describes the ages 3–6
+> rewrite, which now ships as *Simple mode*. The app has since gained a Studio mode,
+> a layered synthesis engine, instrument packs and a sampler — see `design.md` for
+> the current architecture. Kept here as the reasoning behind the version it replaced.
+
 > **Status: implemented.** Everything in "Suggested order of work" below has shipped; the
 > checklist at the end records what each item became. The analysis is kept in its original
 > form as the reasoning behind the rewrite. Where the text says "currently" or "right now,"
