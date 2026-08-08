@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
-  <meta name="theme-color" content="#FFF6E5">
+  <meta name="theme-color" content="#241F33">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="description" content="Beat Pad — a first drum machine for little hands">
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
@@ -15,32 +15,53 @@
 </head>
 <body>
   <div id="app">
-    <header id="topBar">
-      <button id="playBtn" class="ctl big" aria-label="Play"><span class="glyph">▶</span></button>
+    <div id="device">
 
-      <div id="speeds" role="group" aria-label="Speed"></div>
+      <header id="topBar">
+        <button id="playBtn" class="ctl big" aria-label="Play"><span class="glyph">▶</span></button>
+        <div id="speeds" role="group" aria-label="Speed"></div>
+        <button id="gearBtn" class="ctl tiny" aria-label="Grown-ups: press and hold">
+          <span class="glyph">⚙</span><span class="hold-fill"></span>
+        </button>
+      </header>
 
-      <button id="gearBtn" class="ctl tiny" aria-label="Grown-ups: press and hold">
-        <span class="glyph">⚙</span><span class="hold-fill"></span>
-      </button>
-    </header>
+      <!-- Always visible, like the running lights on a real machine. -->
+      <div id="steps" aria-hidden="true"></div>
 
-    <main id="padGrid" aria-label="Sound pads"></main>
+      <nav id="packStrip" aria-label="Sound packs"></nav>
 
-    <section id="beatMaker" hidden aria-label="Beat maker"></section>
+      <main id="padGrid" aria-label="Sound pads"></main>
 
-    <footer id="bottomBar">
-      <button id="recBtn" class="ctl big" aria-label="Record a beat"><span class="glyph">🎤</span></button>
-      <button id="diceBtn" class="ctl big" aria-label="Surprise beat"><span class="glyph">🎲</span></button>
-      <button id="makerBtn" class="ctl big" aria-label="Beat maker" hidden><span class="glyph">🎛️</span></button>
-      <button id="undoBtn" class="ctl big" aria-label="Undo" hidden><span class="glyph">↩️</span></button>
-      <button id="clearBtn" class="ctl big" aria-label="Press and hold to clear">
-        <span class="glyph">🧹</span><span class="hold-fill"></span>
-      </button>
-    </footer>
+      <section id="beatMaker" hidden aria-label="Beat maker"></section>
+
+      <div id="studioStrip" hidden>
+        <div id="banks" role="group" aria-label="Song cards"></div>
+        <button id="sampleBtn" class="ctl small" aria-label="Record your own sounds">
+          <span class="glyph">🎙️</span>
+        </button>
+        <label id="swingWrap" aria-label="Bounce">
+          <span class="glyph" aria-hidden="true">🕺</span>
+          <input type="range" id="swingSlider" min="0" max="100" value="0"
+                 aria-label="Bounce amount">
+        </label>
+      </div>
+
+      <footer id="bottomBar">
+        <button id="recBtn" class="ctl big" aria-label="Record a beat"><span class="glyph">🎤</span></button>
+        <button id="diceBtn" class="ctl big" aria-label="Surprise beat"><span class="glyph">🎲</span></button>
+        <button id="muteBtn" class="ctl big" aria-label="Turn sounds on and off"><span class="glyph">🔇</span></button>
+        <button id="makerBtn" class="ctl big" aria-label="Beat maker" hidden><span class="glyph">🎛️</span></button>
+        <button id="undoBtn" class="ctl big" aria-label="Undo" hidden><span class="glyph">↩️</span></button>
+        <button id="clearBtn" class="ctl big" aria-label="Press and hold to clear">
+          <span class="glyph">🧹</span><span class="hold-fill"></span>
+        </button>
+      </footer>
+
+    </div>
 
     <div id="hint" aria-hidden="true"><span>👆</span></div>
     <div id="fx" aria-hidden="true"></div>
+    <div id="toast" hidden aria-hidden="true"></div>
 
     <div id="countIn" hidden aria-hidden="true">
       <div id="countDots"><i></i><i></i><i></i><i></i></div>
@@ -52,31 +73,22 @@
         <h2 id="parentTitle">Grown-up settings</h2>
 
         <label class="row">
-          <span>Sound kit</span>
-          <select id="kitSelect">
-            <option value="boom">Boom (808)</option>
-            <option value="band">Band (acoustic)</option>
-            <option value="toy">Toy</option>
+          <span>Mode</span>
+          <select id="modeSelect">
+            <option value="simple">Simple — 6 pads (ages 3–5)</option>
+            <option value="studio">Studio — 9 pads, grid, song cards</option>
           </select>
-        </label>
-
-        <label class="row">
-          <span>Number of pads</span>
-          <select id="padCount">
-            <option value="6">6 — bigger buttons (ages 3–5)</option>
-            <option value="9">9 — full kit (ages 5–6)</option>
-          </select>
-        </label>
-
-        <label class="row">
-          <span>Beat maker screen</span>
-          <input type="checkbox" id="makerToggle">
         </label>
 
         <label class="row">
           <span>Volume</span>
           <input type="range" id="volSlider" min="0" max="100" value="70">
         </label>
+
+        <button id="sampleFromPanel" class="secondary">🎙️ Record your own sounds</button>
+        <button id="clearSamples" class="secondary" hidden>Delete recorded sounds</button>
+
+        <p class="note" id="packNote"></p>
 
         <button id="closeParent" class="primary">Done</button>
       </div>
@@ -85,9 +97,12 @@
     <p id="srStatus" class="sr-only" role="status" aria-live="polite"></p>
   </div>
 
+  <script src="js/packs.js"></script>
   <script src="js/audio-engine.js"></script>
   <script src="js/sequencer.js"></script>
   <script src="js/recorder.js"></script>
+  <script src="js/sampler.js"></script>
+  <script src="js/pack-loader.js"></script>
   <script src="js/app.js"></script>
   <script>
     if ('serviceWorker' in navigator) {

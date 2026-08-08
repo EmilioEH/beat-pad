@@ -1,93 +1,105 @@
 /* ═══════════════════════════════════════════════════════════════
-   KIT DEFINITIONS — data, not code.
-   Adding a kit is an edit to this table; no new synthesis code.
-   Voice types: 'osc' | 'noise' | 'noise+osc' | 'clap'
+   AUDIO ENGINE
+
+   A voice is a list of layers. Each layer is one of four sources —
+   osc, noise, metal, sample — with its own envelope, filter, pan,
+   drive and time offset. Everything a kit can say is said in the
+   layer table (js/packs.js); this file only knows how to render it.
+
+   Four things here that the first version got wrong, because they
+   are the difference between "synthesized" and "a drum machine":
+
+   1. Hits vary. Every voice can jitter its pitch, gain and filter a
+      little per hit. Identical repeats are the machine-gun tell.
+   2. Pitch and amplitude have separate envelopes. A kick drops pitch
+      in ~40 ms and then rings for 400. Sliding the pitch across the
+      whole decay is what makes a synth kick sound like a "boop".
+   3. Transients exist. A few ms of filtered noise on top of the body,
+      plus harmonic drive, is what makes a kick audible at all on a
+      phone speaker that cannot reproduce 40 Hz.
+   4. Metal is metal. A hi-hat is detuned squares through a highpass,
+      not white noise. That is where the shimmer comes from.
    ═══════════════════════════════════════════════════════════════ */
-const KITS = {
-  boom: {
-    label: 'Boom',
-    voices: {
-      kick:  { type: 'osc', wave: 'sine', freq: 150, freqEnd: 40, gain: 1.0, dur: 0.35 },
-      snare: { type: 'noise+osc',
-               noise: { gain: 0.45, dur: 0.25, filter: { type: 'highpass', freq: 500 } },
-               osc:   { wave: 'sine', freq: 200, gain: 0.6, dur: 0.12 } },
-      chh:   { type: 'noise', gain: 0.30, dur: 0.06, filter: { type: 'highpass', freq: 9000 } },
-      ohh:   { type: 'noise', gain: 0.24, dur: 0.50, filter: { type: 'highpass', freq: 7000 } },
-      clap:  { type: 'clap', bursts: 3, spread: 0.015, gain: 0.35, dur: 0.08,
-               filter: { type: 'lowpass', freq: 2000 } },
-      tomL:  { type: 'osc', wave: 'sine', freq: 90, freqEnd: 55, gain: 0.7, dur: 0.28 },
-      tomH:  { type: 'osc', wave: 'sine', freq: 160, freqEnd: 100, gain: 0.65, dur: 0.25 },
-      rim:   { type: 'noise+osc',
-               noise: { gain: 0.35, dur: 0.04, filter: { type: 'bandpass', freq: 3000, Q: 5 } },
-               osc:   { wave: 'sine', freq: 350, gain: 0.4, dur: 0.06 } },
-      crash: { type: 'noise', gain: 0.30, dur: 1.6, filter: { type: 'lowpass', freq: 6000 } },
-    },
-  },
 
-  band: {
-    label: 'Band',
-    voices: {
-      kick:  { type: 'osc', wave: 'sine', freq: 100, freqEnd: 30, gain: 0.95, dur: 0.40 },
-      snare: { type: 'noise+osc',
-               noise: { gain: 0.55, dur: 0.22, filter: { type: 'highpass', freq: 300 } },
-               osc:   { wave: 'sine', freq: 180, gain: 0.45, dur: 0.10 } },
-      chh:   { type: 'noise', gain: 0.26, dur: 0.05, filter: { type: 'highpass', freq: 10000 } },
-      ohh:   { type: 'noise', gain: 0.20, dur: 0.45, filter: { type: 'highpass', freq: 8000 } },
-      clap:  { type: 'clap', bursts: 4, spread: 0.012, gain: 0.30, dur: 0.06,
-               filter: { type: 'lowpass', freq: 3000 } },
-      tomL:  { type: 'osc', wave: 'triangle', freq: 75, freqEnd: 50, gain: 0.6, dur: 0.30 },
-      tomH:  { type: 'osc', wave: 'triangle', freq: 140, freqEnd: 95, gain: 0.55, dur: 0.27 },
-      rim:   { type: 'noise+osc',
-               noise: { gain: 0.40, dur: 0.03, filter: { type: 'bandpass', freq: 4000, Q: 8 } },
-               osc:   { wave: 'sine', freq: 400, gain: 0.35, dur: 0.05 } },
-      crash: { type: 'noise', gain: 0.26, dur: 1.8, filter: { type: 'lowpass', freq: 8000 } },
-    },
-  },
+/** Applied when a voice does not name its own. Small on purpose. */
+const DEFAULT_JITTER = { pitch: 0.015, gain: 0.06, filter: 0.05 };
 
-  toy: {
-    label: 'Toy',
-    voices: {
-      kick:  { type: 'osc', wave: 'triangle', freq: 320, freqEnd: 90, gain: 0.8, dur: 0.22 },
-      snare: { type: 'noise+osc',
-               noise: { gain: 0.30, dur: 0.14, filter: { type: 'bandpass', freq: 1800, Q: 2 } },
-               osc:   { wave: 'square', freq: 520, freqEnd: 300, gain: 0.22, dur: 0.10 } },
-      chh:   { type: 'noise', gain: 0.22, dur: 0.05, filter: { type: 'bandpass', freq: 7000, Q: 3 } },
-      ohh:   { type: 'noise', gain: 0.18, dur: 0.35, filter: { type: 'bandpass', freq: 5000, Q: 2 } },
-      clap:  { type: 'clap', bursts: 3, spread: 0.02, gain: 0.28, dur: 0.07,
-               filter: { type: 'bandpass', freq: 2500, Q: 1.5 } },
-      tomL:  { type: 'osc', wave: 'square', freq: 260, freqEnd: 150, gain: 0.30, dur: 0.20 },
-      tomH:  { type: 'osc', wave: 'square', freq: 440, freqEnd: 280, gain: 0.28, dur: 0.18 },
-      rim:   { type: 'osc', wave: 'square', freq: 900, freqEnd: 700, gain: 0.20, dur: 0.05 },
-      crash: { type: 'noise', gain: 0.24, dur: 1.2, filter: { type: 'bandpass', freq: 4500, Q: 1 } },
-    },
-  },
-};
+/** Quiet hits are darker as well as quieter — that is what makes velocity read. */
+const VEL_FLOOR = 0.28;    // a velocity-0 hit still sounds, at this share of gain
+const VEL_TONE_LO = 700;   // lowpass corner at the softest hit
+const VEL_TONE_HI = 19000; // ...and at the hardest
 
 class AudioEngine {
   constructor() {
     this.ctx = null;
-    this.kit = 'boom';
+    this.packId = null;
+    this.pack = null;
+
     this.master = null;
+    this.voiceBus = null;
+    this.reverbSend = null;
+
     this._noiseBuf = null;
+    this._samples = new Map();  // 'packId:voice' -> { hard: [AudioBuffer], soft: [AudioBuffer] }
+    this._rr = new Map();       // round-robin cursor per sample key
+    this._trim = 1;
   }
 
-  init() {
+  /** @param {BaseAudioContext} [ctx] supply one to render offline, e.g. in tests */
+  init(ctx) {
     if (this.ctx) return;
-    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    this.ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+    ctx = this.ctx;
 
-    // Master chain: everything routes through here so simultaneous pads
-    // can't sum past full scale. Small ears, cheap speakers, no clipping.
-    this.master = this.ctx.createGain();
-    this.master.gain.value = 0.7;
+    // ── Master chain ──────────────────────────────────────────────
+    //
+    //   voices → voiceBus → saturator ─┬─────────────→ mix → limiter → master → out
+    //                                  └→ send → verb ─┘
+    //
+    // Saturation before the split so the reverb hears the same glue the
+    // dry path does. The limiter still backstops everything, because a
+    // child holding six pads at once must not clip a cheap speaker.
 
-    const limiter = this.ctx.createDynamicsCompressor();
-    limiter.threshold.value = -6;
+    this.voiceBus = ctx.createGain();
+    this.voiceBus.gain.value = 1;
+
+    const sat = ctx.createWaveShaper();
+    sat.curve = this._saturationCurve(1.7);
+    sat.oversample = '2x';
+
+    const mix = ctx.createGain();
+    mix.gain.value = 1;
+
+    this.reverbSend = ctx.createGain();
+    this.reverbSend.gain.value = 0;   // packs dial this in
+
+    // Keep the low end out of the reverb or the kick turns to mud, and
+    // roll off the very top so the tail sits behind the kit.
+    const sendHP = ctx.createBiquadFilter();
+    sendHP.type = 'highpass';
+    sendHP.frequency.value = 320;
+    const sendLP = ctx.createBiquadFilter();
+    sendLP.type = 'lowpass';
+    sendLP.frequency.value = 7200;
+
+    const verb = ctx.createConvolver();
+    verb.buffer = this._impulse(1.15, 2.8);
+
+    const limiter = ctx.createDynamicsCompressor();
+    limiter.threshold.value = -4;
     limiter.knee.value = 0;
     limiter.ratio.value = 20;
     limiter.attack.value = 0.003;
     limiter.release.value = 0.25;
 
-    this.master.connect(limiter).connect(this.ctx.destination);
+    this.master = ctx.createGain();
+    this.master.gain.value = 0.7;
+
+    this.voiceBus.connect(sat);
+    sat.connect(mix);
+    sat.connect(this.reverbSend);
+    this.reverbSend.connect(sendHP).connect(sendLP).connect(verb).connect(mix);
+    mix.connect(limiter).connect(this.master).connect(ctx.destination);
   }
 
   /** Browsers start the context suspended until a user gesture. */
@@ -104,106 +116,300 @@ class AudioEngine {
     if (this.master) this.master.gain.value = Math.max(0, Math.min(1, v));
   }
 
-  setKit(name) {
-    if (KITS[name]) this.kit = name;
+  /**
+   * Swap the active pack. Packs carry their own output trim and reverb
+   * amount so switching mid-loop doesn't jump in level or space.
+   */
+  setPack(id) {
+    const pack = resolvePack(id);
+    if (!pack) return false;
+    this.packId = id;
+    this.pack = pack;
+    this._trim = pack.trim === undefined ? 1 : pack.trim;
+    if (this.reverbSend) {
+      this.reverbSend.gain.value = pack.space === undefined ? 0.12 : pack.space;
+    }
+    return true;
+  }
+
+  /** True when the pack defines this voice — pads for undefined voices stay dark. */
+  has(voice) {
+    return !!(this.pack && this.pack.voices[voice]);
   }
 
   /**
-   * Fire a voice by name at an explicit audio-clock time.
-   * `when` omitted means "now" (a live pad tap).
+   * Fire a voice at an explicit audio-clock time.
+   * `when` omitted means "now" (a live pad tap). `vel` is 0..1.
    */
-  play(voice, when) {
-    if (!this.ctx) return;
-    const spec = KITS[this.kit].voices[voice];
+  play(voice, when, vel = 1) {
+    if (!this.ctx || !this.pack) return;
+    const spec = this.pack.voices[voice];
     if (!spec) return;
+
     const t = when === undefined ? this.ctx.currentTime : when;
-    for (const node of this._render(spec, t)) node.connect(this.master);
+    const v = Math.max(0, Math.min(1, vel));
+    const jitter = spec.jitter === undefined ? DEFAULT_JITTER : spec.jitter;
+
+    for (const layer of spec.layers) {
+      const node = this._layer(layer, t, v, jitter, voice);
+      if (node) node.connect(this.voiceBus);
+    }
   }
 
-  /** Reward sound: a short rising sparkle, not part of any kit. */
+  /** Reward sound: a short rising sparkle, not part of any pack. */
   sparkle(when) {
     if (!this.ctx) return;
     const t = when === undefined ? this.ctx.currentTime : when;
-    const notes = [523.25, 659.25, 783.99, 1046.5];
-    notes.forEach((f, i) => {
-      const g = this._oscVoice(
-        { wave: 'triangle', freq: f, gain: 0.22, dur: 0.28 },
-        t + i * 0.07
+    [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+      const g = this._osc(
+        { wave: 'triangle', freq: f, gain: 0.22, dur: 0.28, attack: 0.004 },
+        t + i * 0.07, 1, null
       );
-      g.connect(this.master);
+      g.connect(this.voiceBus);
     });
   }
 
-  /* ─── voice renderers ─── */
+  /* ═══════════════ sample banks ═══════════════ */
 
-  _render(spec, when) {
-    switch (spec.type) {
-      case 'osc':
-        return [this._oscVoice(spec, when)];
-      case 'noise':
-        return [this._noiseVoice(spec, when)];
-      case 'noise+osc':
-        return [this._noiseVoice(spec.noise, when), this._oscVoice(spec.osc, when)];
-      case 'clap':
-        return this._clapVoice(spec, when);
-      default:
-        return [];
+  /**
+   * Register decoded buffers for a pack.
+   * @param {string} packId
+   * @param {Object} banks  voice -> { hard: AudioBuffer[], soft?: AudioBuffer[] }
+   */
+  setSampleBank(packId, banks) {
+    for (const [voice, entry] of Object.entries(banks)) {
+      const hard = entry.hard || entry.variants || [];
+      if (!hard.length) {
+        this._samples.delete(packId + ':' + voice);
+        continue;
+      }
+      this._samples.set(packId + ':' + voice, { hard, soft: entry.soft || null });
     }
   }
 
-  _oscVoice(spec, when) {
-    const o = this.ctx.createOscillator();
-    o.type = spec.wave;
-    o.frequency.setValueAtTime(spec.freq, when);
-    if (spec.freqEnd !== undefined) {
-      o.frequency.exponentialRampToValueAtTime(spec.freqEnd, when + spec.dur);
+  clearSample(packId, voice) {
+    this._samples.delete(packId + ':' + voice);
+  }
+
+  hasSample(packId, voice) {
+    return this._samples.has(packId + ':' + voice);
+  }
+
+  /* ═══════════════ layer rendering ═══════════════ */
+
+  _layer(l, when, vel, jitter, voice) {
+    const t = when + (l.offset || 0);
+    switch (l.src) {
+      case 'osc':    return this._osc(l, t, vel, jitter);
+      case 'noise':  return this._noise(l, t, vel, jitter);
+      case 'metal':  return this._metal(l, t, vel, jitter);
+      case 'sample': return this._sample(l, t, vel, jitter, voice);
+      default:       return null;
     }
+  }
+
+  /**
+   * Shared tail for every layer: velocity shaping, per-hit filter jitter,
+   * optional drive, panning. Returns the node to connect to the bus.
+   */
+  _tail(l, source, when, vel, jitter) {
+    const ctx = this.ctx;
+    let node = source;
+
+    if (l.filter) {
+      const f = ctx.createBiquadFilter();
+      f.type = l.filter.type;
+      f.frequency.value = Math.max(20, l.filter.freq * this._jit(jitter, 'filter'));
+      if (l.filter.Q !== undefined) f.Q.value = l.filter.Q;
+      node = node.connect(f);
+    }
+
+    // Softer hits are duller. Skipping this is why velocity usually reads
+    // as nothing more than a volume change.
+    if (l.velTone !== false) {
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = VEL_TONE_LO + (VEL_TONE_HI - VEL_TONE_LO) * Math.pow(vel, 0.55);
+      node = node.connect(lp);
+    }
+
+    if (l.drive) {
+      const ws = ctx.createWaveShaper();
+      ws.curve = this._saturationCurve(1 + l.drive * 6);
+      ws.oversample = '2x';
+      node = node.connect(ws);
+    }
+
+    if (l.pan) {
+      const p = ctx.createStereoPanner();
+      p.pan.value = Math.max(-1, Math.min(1, l.pan));
+      node = node.connect(p);
+    }
+
+    return node;
+  }
+
+  _envelope(when, gain, l, vel, jitter) {
     const g = this.ctx.createGain();
-    g.gain.setValueAtTime(spec.gain, when);
-    g.gain.exponentialRampToValueAtTime(0.0001, when + spec.dur);
-    o.connect(g);
-    o.start(when);
-    o.stop(when + spec.dur + 0.02);
+    // A transient layer can be shorter than the default attack; letting the
+    // ramps cross would put the decay target before the peak.
+    const attack = Math.min(l.attack === undefined ? 0.002 : l.attack, l.dur * 0.5);
+    const peak = Math.max(
+      0.0002,
+      gain * this._velGain(vel, l.velCurve) * this._jit(jitter, 'gain') * this._trim
+    );
+
+    g.gain.setValueAtTime(0.0001, when);
+    g.gain.linearRampToValueAtTime(peak, when + attack);
+    if (l.curve === 'lin') {
+      g.gain.linearRampToValueAtTime(0.0001, when + l.dur);
+    } else {
+      g.gain.exponentialRampToValueAtTime(0.0001, when + l.dur);
+    }
     return g;
   }
 
-  _noiseVoice(spec, when) {
+  _osc(l, when, vel, jitter) {
+    const ctx = this.ctx;
+    const o = ctx.createOscillator();
+    o.type = l.wave || 'sine';
+
+    const p = this._jit(jitter, 'pitch');
+    const f0 = l.freq * p;
+    o.frequency.setValueAtTime(f0, when);
+
+    if (l.freqEnd !== undefined) {
+      // The whole point: pitch falls over pitchDur, not over the full decay.
+      const pd = l.pitchDur === undefined ? l.dur : l.pitchDur;
+      o.frequency.exponentialRampToValueAtTime(Math.max(1, l.freqEnd * p), when + pd);
+    }
+
+    const g = this._envelope(when, l.gain, l, vel, jitter);
+    this._tail(l, o, when, vel, jitter).connect(g);
+
+    o.start(when);
+    o.stop(when + l.dur + 0.02);
+    return g;
+  }
+
+  _noise(l, when, vel, jitter) {
     const buf = this._noiseBuffer();
     const src = this.ctx.createBufferSource();
     src.buffer = buf;
 
-    const g = this.ctx.createGain();
-    g.gain.setValueAtTime(spec.gain, when);
-    g.gain.exponentialRampToValueAtTime(0.0001, when + spec.dur);
+    const g = this._envelope(when, l.gain, l, vel, jitter);
+    this._tail(l, src, when, vel, jitter).connect(g);
 
-    // One place where the filter is wired, so it can't be bypassed.
-    if (spec.filter) src.connect(this._filter(spec.filter)).connect(g);
-    else src.connect(g);
-
-    const maxOffset = Math.max(0, buf.duration - spec.dur - 0.01);
-    src.start(when, Math.random() * maxOffset, spec.dur);
+    // Reading from a random offset is free variation on every noise hit.
+    const maxOffset = Math.max(0, buf.duration - l.dur - 0.01);
+    src.start(when, Math.random() * maxOffset, l.dur + 0.02);
     return g;
   }
 
-  _clapVoice(spec, when) {
-    const out = [];
-    for (let i = 0; i < spec.bursts; i++) {
-      out.push(
-        this._noiseVoice(
-          { gain: spec.gain, dur: spec.dur, filter: spec.filter },
-          when + i * spec.spread
-        )
-      );
+  /**
+   * The 808 hi-hat/cymbal trick: a handful of square waves at inharmonic
+   * ratios, filtered hard so only the clangorous top survives.
+   */
+  _metal(l, when, vel, jitter) {
+    const ctx = this.ctx;
+    const ratios = l.ratios || [2, 3, 4.16, 5.43, 6.79, 8.21];
+    const base = (l.base || 40) * this._jit(jitter, 'pitch');
+
+    const sum = ctx.createGain();
+    sum.gain.value = 1 / Math.sqrt(ratios.length);
+
+    for (const r of ratios) {
+      const o = ctx.createOscillator();
+      o.type = 'square';
+      o.frequency.value = base * r;
+      o.connect(sum);
+      o.start(when);
+      o.stop(when + l.dur + 0.02);
     }
-    return out;
+
+    const hp = ctx.createBiquadFilter();
+    hp.type = 'highpass';
+    hp.frequency.value = l.hp === undefined ? 7000 : l.hp;
+
+    const g = this._envelope(when, l.gain, l, vel, jitter);
+    this._tail(l, sum.connect(hp), when, vel, jitter).connect(g);
+    return g;
   }
 
-  _filter(f) {
-    const node = this.ctx.createBiquadFilter();
-    node.type = f.type;
-    node.frequency.value = f.freq;
-    if (f.Q !== undefined) node.Q.value = f.Q;
-    return node;
+  /**
+   * Sample playback with round-robin variants and soft/hard velocity
+   * layers. Recorded pads and downloadable packs both land here.
+   */
+  _sample(l, when, vel, jitter, voice) {
+    const key = (l.pack || this.packId) + ':' + (l.voice || voice);
+    const bank = this._samples.get(key);
+    if (!bank) return null;
+
+    const list = (bank.soft && vel < 0.55) ? bank.soft : bank.hard;
+    if (!list.length) return null;
+
+    const cursor = (this._rr.get(key) || 0) % list.length;
+    this._rr.set(key, cursor + 1);
+    const buf = list[cursor];
+
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf;
+    src.playbackRate.value = (l.rate || 1) * this._jit(jitter, 'pitch');
+
+    // A sample layer plays its whole buffer unless the pack shortens it.
+    const dur = l.dur === undefined
+      ? buf.duration / src.playbackRate.value
+      : l.dur;
+
+    const g = this._envelope(when, l.gain === undefined ? 1 : l.gain,
+                             { ...l, dur }, vel, jitter);
+    this._tail(l, src, when, vel, jitter).connect(g);
+
+    src.start(when);
+    src.stop(when + dur + 0.02);
+    return g;
+  }
+
+  /* ═══════════════ helpers ═══════════════ */
+
+  /** Velocity never goes fully silent — a soft tap must still be heard. */
+  _velGain(vel, curve) {
+    const v = Math.pow(vel, curve === undefined ? 1.4 : curve);
+    return VEL_FLOOR + (1 - VEL_FLOOR) * v;
+  }
+
+  /** A multiplier around 1 for the named jitter dimension. */
+  _jit(jitter, key) {
+    if (!jitter) return 1;
+    const amount = jitter[key];
+    if (!amount) return 1;
+    return 1 + (Math.random() * 2 - 1) * amount;
+  }
+
+  /** Soft-clip curve. k near 1 is almost linear; larger is more glue. */
+  _saturationCurve(k) {
+    const n = 1024;
+    const curve = new Float32Array(n);
+    const norm = Math.tanh(k);
+    for (let i = 0; i < n; i++) {
+      const x = (i / (n - 1)) * 2 - 1;
+      curve[i] = Math.tanh(k * x) / norm;
+    }
+    return curve;
+  }
+
+  /** Decaying noise burst — a small room, generated so we ship no assets. */
+  _impulse(seconds, decay) {
+    const sr = this.ctx.sampleRate;
+    const len = Math.max(1, Math.floor(sr * seconds));
+    const buf = this.ctx.createBuffer(2, len, sr);
+    for (let ch = 0; ch < 2; ch++) {
+      const data = buf.getChannelData(ch);
+      for (let i = 0; i < len; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay);
+      }
+    }
+    return buf;
   }
 
   /** One shared noise buffer, generated once, read from a random offset. */
@@ -218,4 +424,8 @@ class AudioEngine {
     }
     return this._noiseBuf;
   }
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { AudioEngine, DEFAULT_JITTER };
 }

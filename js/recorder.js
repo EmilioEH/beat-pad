@@ -8,6 +8,8 @@
  *
  * Hits are stamped with the audio clock and mapped to steps through the
  * sequencer's loop anchor, so what you hear is what lands on the grid.
+ * How hard the pad was hit is kept too — a recorded bar should breathe
+ * the way it was played, not arrive flattened to full volume.
  */
 class Recorder {
   constructor(sequencer) {
@@ -37,9 +39,9 @@ class Recorder {
     this._setState('idle');
   }
 
-  hit(voice) {
+  hit(voice, vel = 1) {
     if (this.state !== 'countin' && this.state !== 'recording') return;
-    this._hits.push({ voice, time: this.seq.ctx.currentTime });
+    this._hits.push({ voice, vel, time: this.seq.ctx.currentTime });
   }
 
   /** Called by the sequencer every time the pattern wraps to step 0. */
@@ -64,15 +66,18 @@ class Recorder {
   }
 
   _commit() {
-    const seen = new Set();
-    const added = [];
+    const best = new Map();   // voice:step -> loudest hit that landed there
     for (const h of this._hits) {
       const step = this.seq.stepForTime(h.time);
       const key = h.voice + ':' + step;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      this.seq.setStep(h.voice, step, true);
-      added.push({ voice: h.voice, step });
+      const prev = best.get(key);
+      if (!prev || h.vel > prev.vel) best.set(key, { voice: h.voice, step, vel: h.vel });
+    }
+
+    const added = [];
+    for (const h of best.values()) {
+      this.seq.setStep(h.voice, h.step, h.vel);
+      added.push(h);
     }
     this._hits = [];
     return added;
@@ -82,4 +87,8 @@ class Recorder {
     this.state = s;
     this.onState?.(s, []);
   }
+}
+
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { Recorder };
 }

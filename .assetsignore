@@ -4,3 +4,6 @@
 .gitignore
 wrangler.jsonc
 docs/
+tests/
+README.md
+packs/README.md
