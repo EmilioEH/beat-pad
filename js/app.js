@@ -19,11 +19,15 @@ const ALL_VOICES = ['kick', 'snare', 'chh', 'ohh', 'clap', 'tomL', 'tomH', 'rim'
 const LAYOUT_6 = ['kick', 'snare', 'chh', 'clap', 'tomH', 'crash'];
 const LAYOUT_9 = ['kick', 'snare', 'chh', 'ohh', 'clap', 'tomL', 'tomH', 'rim', 'crash'];
 
-/** Speed stays three pictures. They are now relative to the pack's own tempo. */
+/**
+ * Speed stays three pictures, relative to the pack's own tempo. Three animals
+ * rather than the old turtle/rabbit/rocket — one metaphor, drawn in one style,
+ * instead of two animals and a spacecraft.
+ */
 const SPEEDS = [
   { icon: '🐢', mult: 0.78, label: 'Slow' },
   { icon: '🐇', mult: 1.00, label: 'Medium' },
-  { icon: '🚀', mult: 1.32, label: 'Fast' },
+  { icon: '🐆', mult: 1.32, label: 'Fast' },
 ];
 
 const BANK_NAMES = ['A', 'B', 'C', 'D'];
@@ -62,6 +66,26 @@ let sampler = null;
 const $ = s => document.querySelector(s);
 const $$ = s => Array.from(document.querySelectorAll(s));
 
+/* ═══════════════════ ICONS ═══════════════════ */
+
+/** Fill every [data-icon] slot. Inserted rather than assigned, so overlays
+    already inside the button (the hold-to-activate fill) survive. */
+function paintIcons(root = document) {
+  for (const el of Array.from(root.querySelectorAll('[data-icon]'))) {
+    if (el.querySelector('svg.ic')) continue;
+    el.insertAdjacentHTML('afterbegin', icon(el.dataset.icon));
+  }
+}
+
+/** Change a button's icon in place. */
+function swapIcon(el, name) {
+  if (!el || el.dataset.icon === name) return;
+  const svg = el.querySelector('svg.ic');
+  if (svg) svg.outerHTML = icon(name);
+  else el.insertAdjacentHTML('afterbegin', icon(name));
+  el.dataset.icon = name;
+}
+
 /* ═══════════════════ BOOT ═══════════════════ */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -72,6 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   loadSaved();
 
+  paintIcons();
   buildSpeeds();
   buildStepLights();
   buildBanks();
@@ -203,6 +228,13 @@ function buildPackStrip() {
       audio.unlock().then(() => applyPack(id, true));
     });
     strip.appendChild(b);
+  }
+
+  // Keep the active pack on screen. Switching to one near the end of the strip
+  // otherwise leaves the chip you just chose half cut off at the edge.
+  const active = strip.querySelector('.chip.on');
+  if (active && active.scrollIntoView) {
+    active.scrollIntoView({ inline: 'center', block: 'nearest' });
   }
 }
 
@@ -379,7 +411,7 @@ function buildSpeeds() {
     b.className = 'ctl speed';
     b.dataset.i = i;
     b.setAttribute('aria-label', s.label);
-    b.innerHTML = `<span class="glyph">${s.icon}</span>`;
+    b.innerHTML = `<span class="emoji">${s.icon}</span>`;
     b.addEventListener('click', () => applySpeed(i, true));
     wrap.appendChild(b);
   });
@@ -397,7 +429,14 @@ function applySpeed(i, persist) {
 }
 
 function refreshSwing() {
-  $('#swingSlider').value = String(Math.round(seq.swing * 100));
+  const el = $('#swingSlider');
+  el.value = String(Math.round(seq.swing * 100));
+  paintSwing(el);
+}
+
+/** The filled part of the track is drawn by a gradient, so it needs telling. */
+function paintSwing(el) {
+  el.style.setProperty('--pct', el.value + '%');
 }
 
 /* ═══════════════════ STEP LIGHTS ═══════════════════ */
@@ -428,7 +467,7 @@ function buildBanks() {
     b.className = 'ctl card';
     b.dataset.i = i;
     b.setAttribute('aria-label', `Song card ${name}`);
-    b.innerHTML = `<span class="glyph">${name}</span><span class="hold-fill"></span>`;
+    b.innerHTML = `<span class="cardLetter">${name}</span><span class="hold-fill"></span>`;
 
     // Tap switches at the top of the loop; hold copies this beat into the card.
     holdToActivate(b, HOLD_BANK_MS, () => {
@@ -593,7 +632,7 @@ async function sampleInto(voice) {
     buildPackStrip();
     $('#clearSamples').hidden = false;
     toast('Got it!');
-    celebrate('🎉');
+    celebrate();
     audio.play(voice);
     save();
   } catch (err) {
@@ -639,6 +678,7 @@ function bindTransport() {
   $('#muteBtn').addEventListener('click', () => {
     state.muteMode = !state.muteMode;
     $('#muteBtn').classList.toggle('on', state.muteMode);
+    swapIcon($('#muteBtn'), state.muteMode ? 'mute' : 'sound');
     document.body.classList.toggle('muting', state.muteMode);
     refreshPadLights();
     say(state.muteMode ? 'Tap a pad to turn it off' : 'Back to playing');
@@ -652,6 +692,7 @@ function bindTransport() {
   $('#swingSlider').addEventListener('input', e => {
     state.swing = Number(e.target.value) / 100;
     seq.setSwing(state.swing);
+    paintSwing(e.target);
     save();
   });
 
@@ -718,7 +759,7 @@ function loadGroove() {
   refreshBanks();
   save();
   offerUndo();
-  celebrate('🎵');
+  celebrate();
 }
 
 function wireSequencer() {
@@ -727,7 +768,7 @@ function wireSequencer() {
   seq.onPlay = playing => {
     const b = $('#playBtn');
     b.classList.toggle('on', playing);
-    b.querySelector('.glyph').textContent = playing ? '⏸' : '▶';
+    swapIcon(b, playing ? 'pause' : 'play');
     b.setAttribute('aria-label', playing ? 'Pause' : 'Play');
     if (!playing) {
       lightStep(-1);
@@ -761,7 +802,7 @@ function wireSequencer() {
     btn.classList.toggle('on', s === 'recording');
 
     $('#countIn').hidden = s !== 'countin' && s !== 'recording';
-    $('#countLabel').textContent = s === 'recording' ? '🔴' : '🎤';
+    swapIcon($('#countLabel'), s === 'recording' ? 'record' : 'mic');
     if (s !== 'countin') resetCountIn();
 
     if (s === 'waiting') say('Get ready');
@@ -773,7 +814,7 @@ function wireSequencer() {
       refreshBanks();
       save();
       if (added && added.length) {
-        celebrate('🎉');
+        celebrate();
         audio.sparkle();
         buzz([10, 40, 10]);
         say('Nice beat');
@@ -796,16 +837,25 @@ function resetCountIn() {
 
 /* ═══════════════════ FEEDBACK ═══════════════════ */
 
-function celebrate(emoji) {
+/**
+ * A burst in the pack's own colours. This used to fling emoji across the
+ * screen, which landed as debris on top of the pads — different artwork,
+ * different style, no relationship to anything else on screen.
+ */
+function celebrate(count = 16) {
   const fx = $('#fx');
-  for (let i = 0; i < 14; i++) {
+  const art = pack().pads;
+  const colors = state.layout.map(v => (art[v] && art[v].color) || '#fff');
+
+  for (let i = 0; i < count; i++) {
     const bit = document.createElement('span');
     bit.className = 'bit';
-    bit.textContent = emoji;
-    const angle = (Math.PI * 2 * i) / 14 + Math.random() * 0.4;
-    const dist = 90 + Math.random() * 120;
+    const angle = (Math.PI * 2 * i) / count + Math.random() * 0.35;
+    const dist = 80 + Math.random() * 130;
     bit.style.setProperty('--dx', Math.cos(angle) * dist + 'px');
     bit.style.setProperty('--dy', Math.sin(angle) * dist + 'px');
+    bit.style.setProperty('--size', (6 + Math.random() * 7).toFixed(1) + 'px');
+    bit.style.background = colors[i % colors.length];
     bit.style.animationDelay = (Math.random() * 0.1) + 's';
     fx.appendChild(bit);
     bit.addEventListener('animationend', () => bit.remove());

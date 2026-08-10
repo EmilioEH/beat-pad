@@ -157,6 +157,43 @@ X  accent (1.0)    x  normal (0.72)    o  ghost (0.45)    -  silent
 
 ---
 
+## Look and feel
+
+The rule: **the pads are the only colourful thing on screen.** Colour means "this
+is a sound you can play", so it is spent nowhere else — chassis, buttons, chips
+and strips are a neutral instrument body. The pack tint runs through the body as a
+low-strength wash and shows up as the accent, never as a second saturated surface
+competing with nine pads for attention.
+
+Three things were making it read as janky, and all three were fixable:
+
+**Emoji were doing the job of a UI.** A photoreal broom next to a flat red
+no-entry sign next to knobs too dark to read — different artists, different
+styles, and rendered differently on every operating system, so the app never
+looked the same twice. `js/icons.js` replaces all of it: one set, 24px grid, 2.4
+stroke, round caps, `currentColor`. Emoji stay where they are *content* rather
+than chrome — the pads and the pack chips — because that is where the character
+lives. Two icons were redrawn after looking at them at real size: a cogwheel's
+teeth collapse into a sunburst at 17px, and outlined dots overlap once the stroke
+is counted.
+
+Fixing that also fixed a real ambiguity: the loop recorder and the sampler were
+both a microphone. The recorder is now a record dot.
+
+**Nine saturated hues at once.** Pads are coloured by *role*, not by index — lows,
+mids and highs each get a family, so a pack shows one dominant hue plus an accent
+rather than a rainbow. Each pack picks its own families, so packs still feel
+distinct. Melody is the deliberate exception: there colour encodes pitch, so it
+keeps a ramp, and its nine pads all show one glyph and let the ramp do the work.
+
+**No system underneath.** One spacing rhythm, one radius scale, and one elevation
+language replace the ad-hoc values and the hard `0 5px 0` plastic drop shadows.
+The stylesheet also named a font — Nunito — that it never loaded, so it had been
+silently falling back; the stack now leads with `ui-rounded`, which gets SF Pro
+Rounded free on Apple devices and is exactly the right register.
+
+---
+
 ## Sequencer
 
 `js/sequencer.js`. Still an AudioContext-clock scheduler with a 100 ms lookahead

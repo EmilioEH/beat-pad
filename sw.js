@@ -1,5 +1,5 @@
 // Bump CACHE on every release, or installed users keep the old shell forever.
-const CACHE = 'beat-pad-v3';
+const CACHE = 'beat-pad-v4';
 
 // Downloaded sample packs live in their own cache that release bumps do NOT
 // evict. Re-downloading a pack the user already has would be rude, and on a
@@ -11,6 +11,7 @@ const ASSETS = [
   './',
   './index.html',
   './css/style.css',
+  './js/icons.js',
   './js/packs.js',
   './js/audio-engine.js',
   './js/sequencer.js',
